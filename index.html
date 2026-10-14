@@ -19,21 +19,50 @@
   <div id="mushroom">🍄</div>
 
   <script>
-    const tg = window.Telegram.WebApp;
-    tg.ready();     // говорим Telegram: «игра загрузилась»
-    tg.expand();    // раскрываем на весь экран
+    const API = " https://middle-roommate-powers-wholesale.trycloudflare.com ";  
 
-    let spores = Number(localStorage.getItem("spores")) || 0;
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
     const counter = document.getElementById("spores");
     const mushroom = document.getElementById("mushroom");
-    counter.textContent = "🌱 " + spores;
+
+    let spores = 0;      // очки, которые видит игрок
+    let pending = 0;     // клики, ещё не отправленные на сервер
+
+    function render() {
+      counter.textContent = "🌱 " + spores;
+    }
+
+    async function sync() {
+      const clicks = pending;
+      pending = 0;
+      try {
+        const r = await fetch(API + "/api/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Init-Data": tg.initData },
+          body: JSON.stringify({ clicks })
+        });
+        if (!r.ok) throw new Error("server error");
+        const data = await r.json();
+        spores = data.spores + pending;   // + клики, сделанные пока шёл запрос
+        render();
+      } catch (e) {
+        pending += clicks;                // не получилось: отправим в следующий раз
+      }
+    }
 
     mushroom.addEventListener("pointerdown", () => {
       spores++;
-      counter.textContent = "🌱 " + spores;
-      localStorage.setItem("spores", spores);   // временное сохранение
-      tg.HapticFeedback.impactOccurred("light"); // лёгкая вибрация
+      pending++;
+      render();
+      tg.HapticFeedback.impactOccurred("light");
     });
+
+    setInterval(() => { if (pending > 0) sync(); }, 1000);
+    sync();      // при запуске загружаем сохранённые очки
+    render();
   </script>
 </body>
 </html>
