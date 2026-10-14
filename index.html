@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Грибной лес</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { margin: 0; background: #1b2a1f; color: #e8f5e0;
+           font-family: sans-serif; text-align: center; user-select: none; }
+    #spores { font-size: 32px; margin-top: 40px; }
+    #mushroom { font-size: 140px; margin-top: 40px; display: inline-block;
+                cursor: pointer; transition: transform 0.08s; }
+    #mushroom:active { transform: scale(0.88); }
+  </style>
+</head>
+<body>
+  <div id="spores"></div>
+  <div id="mushroom">🍄</div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();     // говорим Telegram: «игра загрузилась»
+    tg.expand();    // раскрываем на весь экран
+
+    let spores = Number(localStorage.getItem("spores")) || 0;
+    const counter = document.getElementById("spores");
+    const mushroom = document.getElementById("mushroom");
+    counter.textContent = "🌱 " + spores;
+
+    mushroom.addEventListener("pointerdown", () => {
+      spores++;
+      counter.textContent = "🌱 " + spores;
+      localStorage.setItem("spores", spores);   // временное сохранение
+      tg.HapticFeedback.impactOccurred("light"); // лёгкая вибрация
+    });
+  </script>
+</body>
+</html>
