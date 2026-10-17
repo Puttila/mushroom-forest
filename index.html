@@ -10,44 +10,86 @@
     html, body { height: 100%; margin: 0; }
     body { background: #14211a; color: #e8f5e0; font-family: sans-serif; overflow: hidden;
            user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    button { font-family: inherit; }
     #app { display: flex; flex-direction: column; height: 100dvh; }
 
-    /* верхняя панель */
-    #hud { background: #0e1712; padding: 10px 14px; }
+    /* ---------- верхняя панель ---------- */
+    #hud { background: #0e1712; padding: 8px 14px 10px; }
     .row { display: flex; justify-content: space-between; align-items: baseline; }
     #spores { font-size: 26px; font-weight: bold; }
     #dust { font-size: 20px; }
     #income, #time, #status { font-size: 13px; opacity: .7; }
+    #status:empty { display: none; }
+    #lvlrow { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; }
+    #lvl { font-weight: bold; color: #ffe27a; min-width: 44px; }
+    #xpbar { flex: 1; height: 8px; border-radius: 4px; background: #24402c; overflow: hidden; }
+    #xpfill { height: 100%; width: 0; background: linear-gradient(90deg, #ffb020, #ffe27a); transition: width .2s; }
+    #xptext { opacity: .7; min-width: 70px; text-align: right; }
 
-    /* поляна */
+    /* ---------- поляна ---------- */
     #stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
     #scene { position: relative; overflow: hidden; touch-action: manipulation;
              background: radial-gradient(ellipse at 50% 75%, #3f7a45 0%, #2a5230 45%, #14211a 75%); }
-    /* когда нарисуешь поляну: background: url(assets/meadow.png) center / 100% 100% no-repeat, #14211a; */
+    /* когда будет готова поляна без грибов: background: url(assets/meadow.png) center / 100% 100% no-repeat, #14211a; */
 
     .slot { position: absolute; transform: translate(-50%, -50%);
             display: flex; align-items: center; justify-content: center; }
-    .slot img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
-    .slot.locked, .slot.empty { opacity: .35; }
-    .slot.locked.next { opacity: .85; }
-    .slot.glossy { filter: drop-shadow(0 0 6px #ffe27a) brightness(1.15); }
+    .slot .ico { width: 100%; height: 100%; }
+    .slot.locked, .slot.empty { opacity: .4; }
+    .slot.locked.next { opacity: .9; }
+    .slot.empty.target { opacity: 1; animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { transform: translate(-50%, -50%) scale(1.15); } }
     .slot.bump { animation: bump .15s; }
     @keyframes bump { 50% { transform: translate(-50%, -50%) scale(.88); } }
-    .cost { position: absolute; top: 100%; font-size: 12px; white-space: nowrap; color: #ffb4b4; }
+    .cost { position: absolute; top: 100%; font-size: 11px; white-space: nowrap; color: #ffb4b4;
+            background: rgba(0,0,0,.45); border-radius: 6px; padding: 1px 5px; }
     .cost.ok { color: #9dff9d; }
 
     .pop { position: absolute; font-weight: bold; color: #fff3a0; pointer-events: none;
            animation: pop .7s ease-out forwards; }
     @keyframes pop { to { transform: translateY(-50px); opacity: 0; } }
 
-    /* нижняя панель */
+    /* ---------- иконка гриба (картинка или эмодзи) ---------- */
+    .ico { display: flex; align-items: center; justify-content: center; font-size: 28px; line-height: 1; }
+    .ico img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+    .glossy { filter: drop-shadow(0 0 5px #ffe27a) brightness(1.15); }
+
+    /* ---------- нижняя панель ---------- */
     #nav { display: flex; gap: 8px; background: #0e1712; padding: 8px; }
-    #nav button { flex: 1; padding: 12px 0; border: 0; border-radius: 12px;
+    #nav button { flex: 1; padding: 12px 0; border: 0; border-radius: 12px; position: relative;
                   background: #24402c; color: #e8f5e0; font-size: 14px; }
     #nav button:active { background: #2f5a3b; }
+    #nav .dot { position: absolute; top: 5px; right: 8px; width: 9px; height: 9px;
+                border-radius: 50%; background: #ff5d5d; }
+    #nav .dot[hidden] { display: none; }
 
-    /* карточки (информация, магазин, покупка) */
-    #info { position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    /* ---------- шторка инвентаря ---------- */
+    #sheet { position: fixed; left: 50%; bottom: 0; width: min(100vw, 520px);
+             transform: translate(-50%, 105%); transition: transform .25s ease;
+             background: #1d3325; border-radius: 18px 18px 0 0; padding: 8px 10px 14px;
+             box-shadow: 0 -6px 24px rgba(0,0,0,.5); z-index: 10; box-sizing: border-box; }
+    #sheet.open { transform: translate(-50%, 0); }
+    #sheetHead { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 6px; }
+    #sheetHead b { font-size: 16px; }
+    #invCount { opacity: .7; font-size: 13px; margin-left: 8px; }
+    #sheetClose { border: 0; background: #2a4533; color: #e8f5e0; width: 32px; height: 32px;
+                  border-radius: 50%; font-size: 16px; }
+    #sheetHint { font-size: 13px; color: #ffe27a; min-height: 0; padding: 0 4px; }
+    #sheetHint:empty { display: none; }
+    #tabs { display: flex; gap: 6px; padding: 4px 0 8px; overflow-x: auto; }
+    #tabs button { border: 0; border-radius: 8px; padding: 6px 12px; background: #2a4533;
+                   color: #e8f5e0; font-size: 13px; white-space: nowrap; }
+    #tabs button.on { background: #3d8a4f; }
+    #tabs button.buy { background: #3a3a2a; color: #ffe27a; }
+    #grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+    .cell { aspect-ratio: 1; border-radius: 8px; background: #14211a; border: 2px solid #2c4636;
+            position: relative; box-sizing: border-box; padding: 2px; font-size: 22px; }
+    .cell .ico { width: 100%; height: 100%; font-size: inherit; }
+    .cell .lv { position: absolute; right: -2px; bottom: -2px; background: #8a2f2f; color: #fff;
+                font-size: 10px; border-radius: 6px; padding: 0 4px; }
+
+    /* ---------- карточки поверх всего ---------- */
+    #info { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 20;
             display: flex; align-items: center; justify-content: center; }
     #info[hidden] { display: none; }
     #card { background: #1d3325; border-radius: 16px; padding: 18px 20px; width: min(86vw, 340px);
@@ -56,10 +98,17 @@
                    color: #fff; font-size: 15px; }
     #card button.ghost { background: #2a4533; }
     #card button.dim { background: #4a4a4a; color: #aaa; }
-    .btns { display: flex; gap: 8px; margin-top: 14px; }
-    .shoprow { display: flex; justify-content: space-between; align-items: center; gap: 10px;
-               padding: 8px 0; border-top: 1px solid #2c4636; }
-    .shoprow small { opacity: .75; }
+    #card button.sell { background: #8a6a1f; }
+    .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+    .head .ico { width: 64px; height: 64px; font-size: 48px; flex: none; }
+    .bad { color: #ff9d9d; }
+    .big { font-size: 20px; font-weight: bold; }
+    .muted { opacity: .75; }
+    #toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 30;
+             background: rgba(20,40,28,.95); border: 1px solid #3d8a4f; padding: 8px 14px;
+             border-radius: 12px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .25s; }
+    #toast.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -67,20 +116,36 @@
     <div id="hud">
       <div class="row"><div id="spores">🌱 0</div><div id="dust">✨ 0</div></div>
       <div class="row"><div id="income"></div><div id="time">⏱ 00:00</div></div>
+      <div id="lvlrow">
+        <span id="lvl">Ур. 1</span>
+        <div id="xpbar"><div id="xpfill"></div></div>
+        <span id="xptext">0/100</span>
+      </div>
       <div id="status"></div>
     </div>
 
     <div id="stage"><div id="scene"></div></div>
 
     <div id="nav">
-      <button>🛒 Магазин</button>
-      <button>🧬 Мутации</button>
-      <button>📖 Коллекция</button>
-      <button>🎁 Паки</button>
+      <button id="btnInv">🎒 Инвентарь</button>
+      <button id="btnShop">🛒 Магазин<span class="dot" id="shopDot" hidden></span></button>
+      <button id="btnMut">🧬 Мутации</button>
+      <button id="btnPack">🎁 Паки</button>
     </div>
   </div>
 
+  <div id="sheet">
+    <div id="sheetHead">
+      <div><b>🎒 Инвентарь</b><span id="invCount"></span></div>
+      <button id="sheetClose">✕</button>
+    </div>
+    <div id="sheetHint"></div>
+    <div id="tabs"></div>
+    <div id="grid"></div>
+  </div>
+
   <div id="info" hidden><div id="card"></div></div>
+  <div id="toast"></div>
 
   <script>
     const tg = window.Telegram.WebApp;
@@ -91,25 +156,117 @@
     const $ = (id) => document.getElementById(id);
     const scene = $("scene"), stage = $("stage");
 
-    let state = null;            // последнее состояние с сервера
-    let shop = [];               // список грибов в магазине
-    let spores = 0, dust = 0;    // то, что видит игрок
+    // ---------- состояние ----------
+    let state = null;                    // последнее состояние с сервера
+    let spores = 0, dust = 0, xp = 0;    // то, что видит игрок (с учётом ещё не отправленных кликов)
     let clickPower = 0, passive = 0;
-    let pending = 0;             // клики, ещё не отправленные на сервер
-    let slotEls = [], lastSig = "";
-    let costEl = null, nextCost = 0;
-    let holdTimer = null, held = false, infoOpenedAt = 0, busy = false;
+    let pending = 0;                     // клики, ещё не отправленные на сервер
+    let slotEls = [], slotSig = "", invSig = "";
+    let costEl = null, nextCost = null;
+    let targetSlot = null;               // слот, который игрок хочет заполнить (тапнул по ➕)
+    let curTab = 0;
+    let holdTimer = null, held = false, infoOpenedAt = 0;
+    let busy = false, syncing = false;
+    let shopData = null, shopAt = 0, shopOpen = false;
     const sessionStart = Date.now();
 
+    // ---------- мелочи ----------
     const fmt = (n) => Math.floor(n).toLocaleString("ru-RU");
-    const alertMsg = (t) => { try { tg.showAlert(t); } catch (_) { alert(t); } };
+    const fmtTime = (s) => {
+      s = Math.max(0, Math.floor(s));
+      return [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60]
+        .map((v) => String(v).padStart(2, "0")).join(":");
+    };
+    function alertMsg(t) { try { tg.showAlert(t); } catch (_) { alert(t); } }
+    let toastTimer = null;
+    function toast(t) {
+      $("toast").textContent = t;
+      $("toast").classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => $("toast").classList.remove("show"), 1800);
+    }
     const nextLocked = () => (state ? state.slots.findIndex((s) => !s.unlocked) : -1);
 
+    // иконка гриба: твоя текстура, а если файла нет, то эмодзи
+    function icon(m) {
+      const wrap = document.createElement("div");
+      wrap.className = "ico" + (m.glossy ? " glossy" : "");
+      const img = new Image();
+      img.src = "assets/" + m.sprite;
+      img.draggable = false;
+      img.onerror = () => { img.remove(); wrap.textContent = m.emoji; };
+      wrap.appendChild(img);
+      return wrap;
+    }
+    function iconHtml(m) {
+      return `<div class="ico${m.glossy ? " glossy" : ""}"><img src="assets/${m.sprite}" draggable="false"
+              onerror="this.parentNode.textContent='${m.emoji}'"></div>`;
+    }
+
+    // ---------- связь с сервером ----------
+    async function api(path, body) {
+      const opt = { headers: { "X-Init-Data": tg.initData } };
+      if (body !== undefined) {
+        opt.method = "POST";
+        opt.headers["Content-Type"] = "application/json";
+        opt.body = JSON.stringify(body);
+      }
+      const r = await fetch(API + path, opt);
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(typeof err.detail === "string" ? err.detail : "ошибка " + r.status);
+      }
+      return r.json();
+    }
+
+    async function sync() {
+      if (syncing) return;
+      syncing = true;
+      const clicks = pending;
+      pending = 0;
+      try {
+        if (!tg.initData) throw new Error("нет initData (открыто не из Telegram?)");
+        applyState(await api("/api/sync", { clicks }));
+        $("status").textContent = "";
+      } catch (e) {
+        pending += clicks;
+        $("status").textContent = "❌ " + e.message;
+      }
+      syncing = false;
+    }
+
+    // действие, которое меняет состояние (купить, поставить, продать…)
+    async function act(path, body, okText) {
+      if (busy) return false;
+      busy = true;
+      while (syncing) await new Promise((r) => setTimeout(r, 50));
+      await sync();                                   // сначала отправляем накопленные клики
+      let ok = false;
+      try {
+        applyState(await api(path, body));
+        closeCard();
+        if (okText) toast(okText);
+        try { tg.HapticFeedback.notificationOccurred("success"); } catch (_) {}
+        ok = true;
+      } catch (e) {
+        alertMsg(e.message);
+      }
+      busy = false;
+      return ok;
+    }
+
+    // ---------- отрисовка ----------
     function render() {
       $("spores").textContent = "🌱 " + fmt(spores);
       $("dust").textContent = "✨ " + fmt(dust);
       $("income").textContent = "+" + passive.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " спор/сек";
-      if (costEl) costEl.classList.toggle("ok", spores >= nextCost);
+      if (!state) return;
+      const lo = state.xp_floor, hi = state.xp_ceil;
+      const frac = Math.min(1, Math.max(0, (xp - lo) / (hi - lo)));
+      $("xpfill").style.width = (frac * 100) + "%";
+      $("lvl").textContent = "Ур. " + state.level;
+      $("xptext").textContent = fmt(Math.min(Math.max(xp - lo, 0), hi - lo)) + "/" + fmt(hi - lo);
+      if (costEl && nextCost) costEl.classList.toggle("ok", spores >= nextCost.spores && dust >= nextCost.dust);
     }
 
     // подгоняем поляну под экран (пропорции 5:4) и размеры слотов
@@ -126,10 +283,13 @@
     }
     window.addEventListener("resize", layout);
 
-    // рисуем слоты (только когда они изменились)
+    function costText(c) {
+      return fmt(c.spores) + " 🌱" + (c.dust ? " + " + fmt(c.dust) + " ✨" : "");
+    }
+
     function renderSlots() {
       scene.querySelectorAll(".slot").forEach((e) => e.remove());
-      costEl = null;
+      costEl = null; nextCost = null;
       const next = nextLocked();
       slotEls = state.slots.map((s, i) => {
         const el = document.createElement("div");
@@ -140,25 +300,21 @@
         if (!s.unlocked) {
           el.classList.add("locked");
           el.textContent = "🔒";
-          if (i === next && s.cost != null) {
+          if (i === next && s.cost) {
             el.classList.add("next");
             costEl = document.createElement("div");
             costEl.className = "cost";
-            costEl.textContent = fmt(s.cost) + " 🌱";
+            costEl.textContent = costText(s.cost);
             nextCost = s.cost;
             el.appendChild(costEl);
           }
         } else if (!s.mushroom) {
           el.classList.add("empty");
+          if (i === targetSlot) el.classList.add("target");
           el.textContent = "➕";
         } else {
           el.classList.add("filled");
-          if (s.mushroom.glossy) el.classList.add("glossy");
-          const img = new Image();
-          img.src = "assets/" + s.mushroom.sprite;
-          img.draggable = false;
-          img.onerror = () => img.replaceWith(document.createTextNode(s.mushroom.emoji));
-          el.appendChild(img);
+          el.appendChild(icon(s.mushroom));
         }
         scene.appendChild(el);
         return el;
@@ -166,74 +322,86 @@
       layout();
     }
 
+    function renderInv() {
+      const inv = state.inventory;
+      if (curTab >= inv.tabs) curTab = 0;
+      $("invCount").textContent = inv.items.length + "/" + inv.capacity;
+      $("sheetHint").textContent = targetSlot != null ? "Выбери гриб для слота №" + (targetSlot + 1) : "";
+
+      const tabs = $("tabs");
+      tabs.innerHTML = "";
+      for (let t = 0; t < inv.tabs; t++) {
+        const b = document.createElement("button");
+        b.textContent = t + 1;
+        if (t === curTab) b.className = "on";
+        b.onclick = () => { curTab = t; renderInv(); };
+        tabs.appendChild(b);
+      }
+      if (inv.next_tab_cost != null) {
+        const b = document.createElement("button");
+        b.className = "buy";
+        b.textContent = "🔒 " + fmt(inv.next_tab_cost) + " ✨";
+        b.onclick = openBuyTab;
+        tabs.appendChild(b);
+      }
+
+      const grid = $("grid");
+      grid.innerHTML = "";
+      const part = inv.items.slice(curTab * inv.per_tab, (curTab + 1) * inv.per_tab);
+      for (let i = 0; i < inv.per_tab; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        const it = part[i];
+        if (it) {
+          cell.style.borderColor = it.color;
+          cell.appendChild(icon(it));
+          if (it.level > state.level) {
+            const lv = document.createElement("div");
+            lv.className = "lv";
+            lv.textContent = "ур." + it.level;
+            cell.appendChild(lv);
+          }
+          cell.onclick = () => showItem(it);
+        }
+        grid.appendChild(cell);
+      }
+    }
+
     function applyState(s) {
       state = s;
       clickPower = s.click_power;
       passive = s.passive;
       dust = s.dust;
-      spores = s.spores + pending * clickPower;
-      const sig = JSON.stringify(s.slots);
-      if (sig !== lastSig) { lastSig = sig; renderSlots(); }
+      spores = s.spores + pending * clickPower;       // + клики, сделанные пока шёл запрос
+      xp = s.xp + pending;
+      const sig = JSON.stringify(s.slots) + targetSlot;
+      if (sig !== slotSig) { slotSig = sig; renderSlots(); }
+      const isig = JSON.stringify(s.inventory) + s.level;
+      if (isig !== invSig) { invSig = isig; renderInv(); }
+      $("shopDot").hidden = !s.offer.available;
       render();
     }
 
-    async function sync() {
-      const clicks = pending;
-      pending = 0;
-      try {
-        if (!tg.initData) throw new Error("нет initData (открыто не из Telegram?)");
-        const r = await fetch(API + "/api/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Init-Data": tg.initData },
-          body: JSON.stringify({ clicks })
-        });
-        if (!r.ok) throw new Error("сервер ответил " + r.status);
-        applyState(await r.json());
-        $("status").textContent = "✅";
-      } catch (e) {
-        pending += clicks;
-        $("status").textContent = "❌ " + e.message;
-      }
+    // ---------- шторка инвентаря ----------
+    function openSheet() { renderInv(); $("sheet").classList.add("open"); }
+    function refreshSlots() {                         // перерисовать слоты, не трогая счётчики
+      slotSig = JSON.stringify(state.slots) + targetSlot;
+      renderSlots();
     }
-
-    async function loadShop() {
-      try {
-        const r = await fetch(API + "/api/shop");
-        if (r.ok) shop = await r.json();
-      } catch (_) {}
+    function closeSheet() {
+      $("sheet").classList.remove("open");
+      if (targetSlot != null) { targetSlot = null; if (state) refreshSlots(); }
     }
+    $("btnInv").onclick = () => { if (state) openSheet(); };
+    $("sheetClose").onclick = closeSheet;
 
-    // действие, которое меняет состояние (открыть слот, купить, продать)
-    async function act(path, body) {
-      if (busy) return;
-      busy = true;
-      await sync();                              // сначала отправляем накопленные клики
-      try {
-        const r = await fetch(API + path, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Init-Data": tg.initData },
-          body: JSON.stringify(body)
-        });
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({}));
-          throw new Error(err.detail || "ошибка " + r.status);
-        }
-        applyState(await r.json());
-        closeCard();
-        try { tg.HapticFeedback.notificationOccurred("success"); } catch (_) {}
-      } catch (e) {
-        alertMsg(e.message);
-      }
-      busy = false;
-    }
-
-    // ----- карточки -----
+    // ---------- карточки ----------
     function showCard(html) {
       $("card").innerHTML = html;
       infoOpenedAt = Date.now();
       $("info").hidden = false;
     }
-    function closeCard() { $("info").hidden = true; }
+    function closeCard() { $("info").hidden = true; shopOpen = false; }
 
     $("info").addEventListener("click", (e) => {
       if (e.target === $("info") && Date.now() - infoOpenedAt > 300) closeCard();
@@ -242,59 +410,132 @@
       const b = e.target.closest("button[data-act]");
       if (!b) return;
       const d = b.dataset;
-      if (d.act === "close") closeCard();
-      if (d.act === "unlock") act("/api/unlock", { slot: Number(d.slot) });
-      if (d.act === "buy") act("/api/buy", { slot: Number(d.slot), mushroom: d.id });
-      if (d.act === "sell") act("/api/sell", { slot: Number(d.slot) });
+      switch (d.act) {
+        case "close": closeCard(); break;
+        case "unlock": act("/api/unlock", { slot: Number(d.slot) }, "Слот открыт!"); break;
+        case "buytab": act("/api/buy_tab", {}, "Новая вкладка!"); break;
+        case "shopbuy": act("/api/shop/buy", {}, "Гриб в инвентаре 🎒").then(() => { shopData = null; }); break;
+        case "unplace": act("/api/unplace", { slot: Number(d.slot) }, "Гриб убран в инвентарь"); break;
+        case "sell": act("/api/sell", { item: Number(d.item) }, "Продано!"); break;
+        case "place":
+          act("/api/place", { item: Number(d.item), slot: Number(d.slot) }, "Гриб посажен 🌱").then((ok) => {
+            if (ok && targetSlot != null) closeSheet();
+          });
+          break;
+      }
     });
 
-    function showInfo(i) {                       // удержание гриба
-      const m = state.slots[i].mushroom;
-      showCard(`
-        <div style="font-size:20px;font-weight:bold">${m.name}${m.glossy ? " ✨" : ""}</div>
-        <div style="color:${m.color};margin:2px 0 10px">${m.rarity_name}</div>
-        <div style="opacity:.85;margin-bottom:10px">${m.desc}</div>
-        <div>👆 ${m.click} спор за клик</div>
-        <div>⏳ ${m.passive} спор/сек</div>
+    function stats(m) {
+      return `<div>👆 ${m.click} спор за клик</div>
+              <div>⏳ ${m.passive} спор/сек</div>`;
+    }
+    function mushHead(m) {
+      return `<div class="head">${iconHtml(m)}<div>
+                <div class="big">${m.name}${m.glossy ? " ✨" : ""}</div>
+                <div style="color:${m.color}">${m.rarity_name}</div></div></div>
+              <div class="muted" style="margin-bottom:8px">${m.desc}</div>`;
+    }
+
+    // гриб из инвентаря
+    function pickSlot() {
+      if (targetSlot != null && state.slots[targetSlot].unlocked && !state.slots[targetSlot].mushroom) return targetSlot;
+      return state.slots.findIndex((s) => s.unlocked && !s.mushroom);
+    }
+    function showItem(it) {
+      const free = pickSlot();
+      let place;
+      if (state.level < it.level) place = `<button class="dim" data-act="close">Нужен уровень ${it.level}</button>`;
+      else if (free < 0) place = `<button class="dim" data-act="close">Нет свободных слотов</button>`;
+      else place = `<button data-act="place" data-item="${it.item}" data-slot="${free}">Посадить в слот №${free + 1}</button>`;
+      showCard(`${mushHead(it)}${stats(it)}
+        <div class="${state.level < it.level ? "bad" : "muted"}">🎓 Нужен уровень: ${it.level}</div>
         <div class="btns">
-          <button data-act="sell" data-slot="${i}">Продать за ${fmt(m.sell)} ✨</button>
+          ${place}
+          <button class="sell" data-act="sell" data-item="${it.item}">Продать за ${fmt(it.sell)} ✨</button>
+          <button class="ghost" data-act="close">Закрыть</button>
+        </div>`);
+    }
+
+    // гриб на поляне (удержание)
+    function showPlaced(i) {
+      const m = state.slots[i].mushroom;
+      showCard(`${mushHead(m)}${stats(m)}
+        <div class="muted">💰 Продажа: ${fmt(m.sell)} ✨ (сначала убери в инвентарь)</div>
+        <div class="btns">
+          <button data-act="unplace" data-slot="${i}">Убрать в инвентарь</button>
           <button class="ghost" data-act="close">Закрыть</button>
         </div>`);
       try { tg.HapticFeedback.impactOccurred("medium"); } catch (_) {}
     }
 
     function openUnlock(i) {
-      const cost = state.slots[i].cost;
+      const c = state.slots[i].cost;
+      const enough = spores >= c.spores && dust >= c.dust;
       showCard(`
-        <div style="font-size:18px;font-weight:bold">Новый слот</div>
-        <div style="margin-top:6px">Открыть слот №${i + 1} за ${fmt(cost)} 🌱?</div>
-        <div style="opacity:.75">У тебя: ${fmt(spores)} 🌱</div>
+        <div class="big">Новый слот</div>
+        <div style="margin-top:6px">Открыть слот №${i + 1} за ${costText(c)}?</div>
+        <div class="muted">У тебя: ${fmt(spores)} 🌱 и ${fmt(dust)} ✨</div>
         <div class="btns">
-          <button data-act="unlock" data-slot="${i}">Открыть</button>
+          <button ${enough ? "" : 'class="dim"'} data-act="${enough ? "unlock" : "close"}" data-slot="${i}">${enough ? "Открыть" : "Не хватает"}</button>
           <button class="ghost" data-act="close">Отмена</button>
         </div>`);
     }
 
-    async function openShop(slot) {
-      if (!shop.length) await loadShop();
-      if (!shop.length) return alertMsg("Магазин пока недоступен");
-      const rows = shop.map((it) => `
-        <div class="shoprow">
-          <div><b style="color:${it.color}">${it.emoji} ${it.name}</b><br>
-          <small>${it.rarity_name} · 👆${it.click} ⏳${it.passive}/с</small></div>
-          <button data-act="buy" data-slot="${slot}" data-id="${it.id}"
-                  ${spores < it.price ? 'class="dim"' : ""}>${fmt(it.price)} 🌱</button>
-        </div>`).join("");
+    function openBuyTab() {
+      const inv = state.inventory;
+      const enough = dust >= inv.next_tab_cost;
       showCard(`
-        <div style="font-size:18px;font-weight:bold;margin-bottom:8px">Гриб для слота №${slot + 1}</div>
-        ${rows}
-        <div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`);
+        <div class="big">Вкладка №${inv.tabs + 1}</div>
+        <div style="margin-top:6px">+${inv.per_tab} ячеек за ${fmt(inv.next_tab_cost)} ✨</div>
+        <div class="muted">У тебя: ${fmt(dust)} ✨</div>
+        <div class="btns">
+          <button ${enough ? "" : 'class="dim"'} data-act="${enough ? "buytab" : "close"}">${enough ? "Купить" : "Не хватает ✨"}</button>
+          <button class="ghost" data-act="close">Отмена</button>
+        </div>`);
     }
 
-    // ----- клики по поляне -----
-    function doClick(e) {                        // клик по поляне = клик сразу по всем грибам
+    // ---------- магазин: предложение дня ----------
+    async function openShop() {
+      try {
+        await sync();
+        shopData = await api("/api/shop");
+        shopAt = Date.now();
+      } catch (e) { return alertMsg(e.message); }
+      renderShop();
+    }
+    function renderShop() {
+      const d = shopData, m = d.mushroom;
+      const left = d.expires_in - (Date.now() - shopAt) / 1000;
+      let body;
+      if (d.bought) {
+        body = `<div class="big">Куплено ✅</div>
+                <div class="muted" style="margin-top:6px">Гриб уже в инвентаре. Новое предложение через
+                  <b id="shopTimer">${fmtTime(left)}</b></div>
+                <div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`;
+      } else {
+        const lvlOk = state.level >= m.level, rich = spores >= d.price;
+        let buy;
+        if (!lvlOk) buy = `<button class="dim" data-act="close">Нужен уровень ${m.level}</button>`;
+        else if (!rich) buy = `<button class="dim" data-act="close">${fmt(d.price)} 🌱 (не хватает)</button>`;
+        else buy = `<button data-act="shopbuy">Купить за ${fmt(d.price)} 🌱</button>`;
+        body = `<div class="big" style="margin-bottom:8px">🛒 Предложение дня</div>
+                ${mushHead(m)}${stats(m)}
+                <div class="${lvlOk ? "muted" : "bad"}">🎓 Нужен уровень: ${m.level}</div>
+                <div class="muted" style="margin-top:6px">⏰ Исчезнет через <b id="shopTimer">${fmtTime(left)}</b></div>
+                <div class="btns">${buy}<button class="ghost" data-act="close">Закрыть</button></div>`;
+      }
+      showCard(body);
+      shopOpen = true;
+    }
+    $("btnShop").onclick = () => { if (state) openShop(); };
+    $("btnMut").onclick = () => alertMsg("Мутации скоро!");
+    $("btnPack").onclick = () => alertMsg("Паки скоро!");
+
+    // ---------- клики по поляне ----------
+    function doClick(e) {                             // клик по поляне = клик сразу по всем грибам
       if (!state || clickPower === 0) return;
       spores += clickPower;
+      xp += 1;
       pending++;
       render();
 
@@ -322,7 +563,7 @@
       held = false;
       const slotEl = e.target.closest(".slot.filled");
       if (slotEl) {
-        holdTimer = setTimeout(() => { held = true; showInfo(Number(slotEl.dataset.index)); }, 400);
+        holdTimer = setTimeout(() => { held = true; showPlaced(Number(slotEl.dataset.index)); }, 400);
       }
     });
     scene.addEventListener("pointerup", (e) => {
@@ -330,40 +571,41 @@
       if (!held && state) {
         const slotEl = e.target.closest(".slot");
         const i = slotEl ? Number(slotEl.dataset.index) : -1;
-        if (i >= 0 && slotEl.classList.contains("empty")) openShop(i);
-        else if (i >= 0 && i === nextLocked() && state.slots[i].cost != null) openUnlock(i);
-        else doClick(e);
+        if (i >= 0 && slotEl.classList.contains("empty")) {
+          targetSlot = i;                             // хочу посадить гриб сюда
+          refreshSlots();
+          openSheet();
+        } else if (i >= 0 && i === nextLocked() && state.slots[i].cost) {
+          openUnlock(i);
+        } else {
+          doClick(e);
+        }
       }
       held = false;
     });
     scene.addEventListener("pointercancel", () => clearTimeout(holdTimer));
     document.addEventListener("contextmenu", (e) => e.preventDefault());
 
-    // нижняя панель
-    const navButtons = document.querySelectorAll("#nav button");
-    navButtons[0].onclick = () => {              // магазин: первый свободный слот
-      if (!state) return;
-      const i = state.slots.findIndex((s) => s.unlocked && !s.mushroom);
-      if (i < 0) return alertMsg("Нет свободных слотов. Открой новый или продай гриб.");
-      openShop(i);
-    };
-    navButtons.forEach((b, k) => { if (k > 0) b.onclick = () => alertMsg("Скоро!"); });
-
-    // таймеры
-    setInterval(() => { spores += passive / 10; render(); }, 100);          // пассивный доход на экране
-    setInterval(() => {                                                       // время сеанса
+    // ---------- таймеры ----------
+    setInterval(() => { spores += passive / 10; render(); }, 100);        // пассивный доход на экране
+    setInterval(() => {                                                    // время сеанса
       const s = Math.floor((Date.now() - sessionStart) / 1000);
       $("time").textContent = "⏱ " + String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+      if (shopOpen && shopData) {                                          // обратный отсчёт предложения
+        const left = shopData.expires_in - (Date.now() - shopAt) / 1000;
+        const t = $("shopTimer");
+        if (t) t.textContent = fmtTime(left);
+        if (left <= 0) { shopOpen = false; openShop(); }
+      }
     }, 1000);
     let idleTicks = 0;
-    setInterval(() => {                                                       // связь с сервером
+    setInterval(() => {                                                    // связь с сервером
       idleTicks++;
-      if (pending > 0 || idleTicks >= 10) { idleTicks = 0; sync(); }
+      if (!busy && (pending > 0 || idleTicks >= 10)) { idleTicks = 0; sync(); }
     }, 1000);
 
     layout();
     sync();
-    loadShop();
   </script>
 </body>
 </html>
