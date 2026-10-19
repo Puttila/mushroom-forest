@@ -27,22 +27,32 @@
     #xptext { opacity: .7; min-width: 70px; text-align: right; }
 
     /* ---------- поляна ---------- */
-    #stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
-    #scene { position: relative; overflow: hidden; touch-action: manipulation;
-             background: radial-gradient(ellipse at 50% 75%, #3f7a45 0%, #2a5230 45%, #14211a 75%); }
-    /* когда будет готова поляна без грибов: background: url(assets/meadow.png) center / 100% 100% no-repeat, #14211a; */
+    #stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+             background: url(assets/ground.webp) center / cover no-repeat, #0f1d14;
+             box-shadow: inset 0 14px 14px -10px rgba(0,0,0,.65), inset 0 -14px 14px -10px rgba(0,0,0,.65); }
+    #scene { position: relative; z-index: 0; isolation: isolate; touch-action: manipulation; }   /* z-index слотов не вылезает за поляну */
+    #scene.nomeadow { background: radial-gradient(ellipse at 50% 48%, #3f7a45 0%, #2a5230 55%, rgba(20,33,26,0) 72%); }
+    #meadow { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
-    .slot { position: absolute; transform: translate(-50%, -50%);
-            display: flex; align-items: center; justify-content: center; }
-    .slot .ico { width: 100%; height: 100%; }
-    .slot.locked, .slot.empty { opacity: .4; }
-    .slot.locked.next { opacity: .9; }
-    .slot.empty.target { opacity: 1; animation: pulse 1s infinite; }
-    @keyframes pulse { 50% { transform: translate(-50%, -50%) scale(1.15); } }
+    /* слот: x, y сервера = точка, где стоит ножка гриба (86% высоты квадрата слота) */
+    .slot { position: absolute; transform: translate(-50%, -86%); transform-origin: 50% 86%; }
+    .slot .mound { position: absolute; left: 50%; top: 86%; width: 118%; transform: translate(-50%, -30%);
+                   pointer-events: none; }
+    .slot .ico { position: absolute; inset: 0; }
+    .slot .lock { position: absolute; left: 50%; top: 86%; width: 46%; transform: translate(-50%, -68%);
+                  pointer-events: none; text-align: center; opacity: .75; }
+    .slot .plus { position: absolute; left: 50%; top: 86%; transform: translate(-50%, -60%); line-height: 1;
+                  font-weight: bold; color: #fff3c0; text-shadow: 0 0 6px #000, 0 0 2px #000;
+                  opacity: .85; pointer-events: none; }
+    .slot.locked .mound { filter: grayscale(.6) brightness(.55); }
+    .slot.locked.next .mound { filter: grayscale(.15) brightness(.85); }
+    .slot.locked.next .lock { opacity: 1; }
+    .slot.empty.target { animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { transform: translate(-50%, -86%) scale(1.12); } }
     .slot.bump { animation: bump .15s; }
-    @keyframes bump { 50% { transform: translate(-50%, -50%) scale(.88); } }
-    .cost { position: absolute; top: 100%; font-size: 11px; white-space: nowrap; color: #ffb4b4;
-            background: rgba(0,0,0,.45); border-radius: 6px; padding: 1px 5px; }
+    @keyframes bump { 50% { transform: translate(-50%, -86%) scale(.9); } }
+    .cost { position: absolute; top: 134%; left: 50%; transform: translateX(-50%); font-size: 11px;
+            white-space: nowrap; color: #ffb4b4; background: rgba(0,0,0,.55); border-radius: 6px; padding: 1px 6px; }
     .cost.ok { color: #9dff9d; }
 
     .pop { position: absolute; font-weight: bold; color: #fff3a0; pointer-events: none;
@@ -124,7 +134,7 @@
       <div id="status"></div>
     </div>
 
-    <div id="stage"><div id="scene"></div></div>
+    <div id="stage"><div id="scene"><img id="meadow" src="assets/meadow.webp" alt="" draggable="false"></div></div>
 
     <div id="nav">
       <button id="btnInv">🎒 Инвентарь</button>
@@ -155,6 +165,8 @@
 
     const $ = (id) => document.getElementById(id);
     const scene = $("scene"), stage = $("stage");
+    const SCENE_RATIO = 1102 / 682;      // ширина / высота картинки поляны (meadow.webp)
+    $("meadow").onerror = () => { $("meadow").remove(); scene.classList.add("nomeadow"); };
 
     // ---------- состояние ----------
     let state = null;                    // последнее состояние с сервера
@@ -271,14 +283,14 @@
 
     // подгоняем поляну под экран (пропорции 5:4) и размеры слотов
     function layout() {
-      const w = Math.min(stage.clientWidth, stage.clientHeight * 1.25);
+      const w = Math.min(stage.clientWidth, stage.clientHeight * SCENE_RATIO);
       scene.style.width = w + "px";
-      scene.style.height = (w / 1.25) + "px";
+      scene.style.height = (w / SCENE_RATIO) + "px";
       if (!state) return;
       state.slots.forEach((s, i) => {
-        const size = w * 0.17 * s.scale;
+        const size = w * 0.15 * s.scale;
         slotEls[i].style.width = slotEls[i].style.height = size + "px";
-        slotEls[i].style.fontSize = size * 0.8 + "px";
+        slotEls[i].style.fontSize = size * 0.5 + "px";
       });
     }
     window.addEventListener("resize", layout);
@@ -296,10 +308,24 @@
         el.className = "slot";
         el.style.left = s.x + "%";
         el.style.top = s.y + "%";
+        el.style.zIndex = Math.round(s.y * 10);          // что ниже на экране, то поверх
         el.dataset.index = i;
+
+        const mound = new Image();                       // кочка под грибом
+        mound.className = "mound";
+        mound.src = "assets/slot_empty.webp";
+        mound.draggable = false;
+        mound.onerror = () => mound.remove();
+        el.appendChild(mound);
+
         if (!s.unlocked) {
           el.classList.add("locked");
-          el.textContent = "🔒";
+          const lock = new Image();
+          lock.className = "lock";
+          lock.src = "assets/icon_lock.webp";
+          lock.draggable = false;
+          lock.onerror = () => { const t = document.createElement("div"); t.className = "lock"; t.textContent = "🔒"; lock.replaceWith(t); };
+          el.appendChild(lock);
           if (i === next && s.cost) {
             el.classList.add("next");
             costEl = document.createElement("div");
@@ -311,7 +337,10 @@
         } else if (!s.mushroom) {
           el.classList.add("empty");
           if (i === targetSlot) el.classList.add("target");
-          el.textContent = "➕";
+          const plus = document.createElement("div");
+          plus.className = "plus";
+          plus.textContent = "+";
+          el.appendChild(plus);
         } else {
           el.classList.add("filled");
           el.appendChild(icon(s.mushroom));

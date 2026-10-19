@@ -1,1 +1,1 @@
-const API = "https://stick-history-allied-pete.trycloudflare.com";
+const API = "https://tricks-expansys-objects-vsnet.trycloudflare.com";
