@@ -1,1 +1,1 @@
-const API = "https://tricks-expansys-objects-vsnet.trycloudflare.com";
+const API = "https://fun-experiencing-penetration-sure.trycloudflare.com";

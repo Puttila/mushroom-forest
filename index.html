@@ -98,6 +98,76 @@
     .cell .lv { position: absolute; right: -2px; bottom: -2px; background: #8a2f2f; color: #fff;
                 font-size: 10px; border-radius: 6px; padding: 0 4px; }
 
+    /* ---------- пассивный доход: еле заметная дрожь гриба и бледное "+N" над ним ---------- */
+    .slot .ico { transform-origin: 50% 86%; }
+    .ptick { position: absolute; left: 50%; top: -2%; transform: translateX(-50%); white-space: nowrap;
+             font-weight: bold; color: #d8f2b4; text-shadow: 0 0 3px #000, 0 0 2px #000;
+             opacity: 0; pointer-events: none; }
+
+    /* ---------- магазин (аукцион) ---------- */
+    input { user-select: text; -webkit-user-select: text; }
+    #shop { position: fixed; left: 50%; bottom: 0; width: min(100vw, 520px); height: 88dvh;
+            display: flex; flex-direction: column; box-sizing: border-box;
+            transform: translate(-50%, 105%); visibility: hidden;
+            transition: transform .25s ease, visibility 0s .25s;
+            background: #1d3325; border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.5); z-index: 10; }
+    #shop.open { transform: translate(-50%, 0); visibility: visible; transition: transform .25s ease, visibility 0s; }
+    .phead { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 6px; }
+    .phead b { font-size: 17px; }
+    .phead .sub { display: block; font-size: 12px; opacity: .7; margin-top: 2px; }
+    .xbtn { border: 0; background: #2a4533; color: #e8f5e0; width: 32px; height: 32px; border-radius: 50%; font-size: 16px; }
+    #shopBody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 12px 8px; }
+
+    #deal { position: relative; margin: 8px 0 6px; padding: 10px 12px 12px; border-radius: 14px;
+            background: linear-gradient(135deg, #4d3c14, #2d2b15 60%, #1f3a2a);
+            border: 1px solid #c9a23a; box-shadow: 0 0 14px rgba(255,200,60,.18); }
+    #deal:empty { display: none; }
+    #deal .dtop { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold;
+                  color: #ffd76a; letter-spacing: .04em; text-transform: uppercase; padding-right: 54px; }
+    #deal .dmain { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+    #deal .ico { width: 64px; height: 64px; flex: none; font-size: 44px; }
+    #deal .dname { font-size: 16px; font-weight: bold; }
+    #deal .badge { position: absolute; top: -9px; right: -6px; background: #e0453a; color: #fff; font-weight: bold;
+                   font-size: 16px; padding: 3px 10px; border-radius: 12px; transform: rotate(4deg);
+                   box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+    #deal .dbuy { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+    #deal s { opacity: .55; font-size: 13px; margin-right: 4px; }
+    #deal .newp { font-size: 19px; font-weight: bold; color: #fff3c0; }
+
+    .buy { border: 0; border-radius: 10px; padding: 9px 12px; background: #3d8a4f; color: #fff; font-size: 14px;
+           font-weight: bold; white-space: nowrap; min-width: 92px; }
+    .buy.poor { background: #4a3535; color: #ff9d9d; }
+    .buy.lock, .buy.sold { background: #3a3a3a; color: #aaa; }
+
+    #shopTools { position: sticky; top: 0; z-index: 2; background: #1d3325; padding: 6px 0 2px; }
+    #search { width: 100%; box-sizing: border-box; border: 0; border-radius: 10px; padding: 10px 12px;
+              background: #14211a; color: #e8f5e0; font-size: 16px; outline: 1px solid #2c4636; }
+    #chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 6px; scrollbar-width: none; }
+    #chips::-webkit-scrollbar { display: none; }
+    .chip { flex: none; border: 1px solid var(--c, #3d5a47); background: #14211a; color: #e8f5e0;
+            border-radius: 14px; padding: 5px 10px; font-size: 12.5px; white-space: nowrap; }
+    .chip i { font-style: normal; opacity: .7; margin-left: 5px; }
+    .chip.on { background: var(--c, #3d8a4f); color: #10180f; font-weight: bold; }
+    .chip.zero:not(.on) { opacity: .45; }
+
+    .lot { display: flex; gap: 10px; align-items: center; padding: 8px 10px; margin-bottom: 6px;
+           border-radius: 12px; background: #17291e; border-left: 4px solid var(--c, #555); }
+    .lot.sold { opacity: .45; }
+    .lot .ico { width: 48px; height: 48px; flex: none; font-size: 32px; }
+    .lot .info { flex: 1; min-width: 0; }
+    .lot .nm { font-weight: bold; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lot .rr { font-size: 12px; }
+    .st { font-size: 11.5px; opacity: .7; }
+    .empty { text-align: center; padding: 26px 12px; opacity: .75; font-size: 14px; line-height: 1.5; }
+
+    #shopFoot { padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: #16281d;
+                border-top: 1px solid #2c4636; border-radius: 0; }
+    #btnRefresh { width: 100%; padding: 12px; border: 0; border-radius: 12px; background: #3d8a4f; color: #fff;
+                  font-size: 15px; font-weight: bold; }
+    #btnRefresh.poor { background: #4a3535; color: #ff9d9d; }
+    #btnRefresh:disabled { background: #3a3a3a; color: #aaa; }
+    #refreshNote { font-size: 12px; opacity: .7; text-align: center; margin-top: 6px; }
+
     /* ---------- карточки поверх всего ---------- */
     #info { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 20;
             display: flex; align-items: center; justify-content: center; }
@@ -154,6 +224,25 @@
     <div id="grid"></div>
   </div>
 
+  <div id="shop">
+    <div class="phead">
+      <div><b>🛒 Аукцион</b><span class="sub">Новые лоты через <span id="lotsTimer">--:--:--</span></span></div>
+      <button class="xbtn" id="shopClose">✕</button>
+    </div>
+    <div id="shopBody">
+      <div id="deal"></div>
+      <div id="shopTools">
+        <input id="search" type="search" placeholder="🔍 Поиск по названию" autocomplete="off" enterkeyhint="search">
+        <div id="chips"></div>
+      </div>
+      <div id="lots"></div>
+    </div>
+    <div id="shopFoot">
+      <button id="btnRefresh">🔄 Обновить лоты</button>
+      <div id="refreshNote"></div>
+    </div>
+  </div>
+
   <div id="info" hidden><div id="card"></div></div>
   <div id="toast"></div>
 
@@ -199,20 +288,25 @@
     }
     const nextLocked = () => (state ? state.slots.findIndex((s) => !s.unlocked) : -1);
 
-    // иконка гриба: твоя текстура, а если файла нет, то эмодзи
+    // иконка гриба: твоя текстура, а если файла нет, то эмодзи (и больше этот файл не запрашиваем)
+    const missingSprites = new Set();
+    function spriteMissing(img, sprite, emoji) { missingSprites.add(sprite); img.parentNode.textContent = emoji; }
     function icon(m) {
       const wrap = document.createElement("div");
       wrap.className = "ico" + (m.glossy ? " glossy" : "");
+      if (missingSprites.has(m.sprite)) { wrap.textContent = m.emoji; return wrap; }
       const img = new Image();
       img.src = "assets/" + m.sprite;
       img.draggable = false;
-      img.onerror = () => { img.remove(); wrap.textContent = m.emoji; };
+      img.onerror = () => { missingSprites.add(m.sprite); img.remove(); wrap.textContent = m.emoji; };
       wrap.appendChild(img);
       return wrap;
     }
     function iconHtml(m) {
-      return `<div class="ico${m.glossy ? " glossy" : ""}"><img src="assets/${m.sprite}" draggable="false"
-              onerror="this.parentNode.textContent='${m.emoji}'"></div>`;
+      const cls = "ico" + (m.glossy ? " glossy" : "");
+      if (missingSprites.has(m.sprite)) return `<div class="${cls}">${m.emoji}</div>`;
+      return `<div class="${cls}"><img src="assets/${m.sprite}" draggable="false"
+              onerror="spriteMissing(this,'${m.sprite}','${m.emoji}')"></div>`;
     }
 
     // ---------- связь с сервером ----------
@@ -255,7 +349,9 @@
       await sync();                                   // сначала отправляем накопленные клики
       let ok = false;
       try {
-        applyState(await api(path, body));
+        const res = await api(path, body);
+        applyState(res);
+        if (res.shop) setShop(res.shop);               // покупка/обновление вернули свежий магазин
         closeCard();
         if (okText) toast(okText);
         try { tg.HapticFeedback.notificationOccurred("success"); } catch (_) {}
@@ -430,7 +526,7 @@
       infoOpenedAt = Date.now();
       $("info").hidden = false;
     }
-    function closeCard() { $("info").hidden = true; shopOpen = false; }
+    function closeCard() { $("info").hidden = true; }
 
     $("info").addEventListener("click", (e) => {
       if (e.target === $("info") && Date.now() - infoOpenedAt > 300) closeCard();
@@ -443,7 +539,9 @@
         case "close": closeCard(); break;
         case "unlock": act("/api/unlock", { slot: Number(d.slot) }, "Слот открыт!"); break;
         case "buytab": act("/api/buy_tab", {}, "Новая вкладка!"); break;
-        case "shopbuy": act("/api/shop/buy", {}, "Гриб в инвентаре 🎒").then(() => { shopData = null; }); break;
+        case "shopbuy": act("/api/shop/buy", {}, "Гриб в инвентаре 🎒"); break;
+        case "lotbuy": { const l = shopData && shopData.lots.find((x) => x.id === d.id); if (l) buyLot(l); break; }
+        case "refresh": act("/api/auction/refresh", {}, "Аукцион обновлён 🔄"); break;
         case "unplace": act("/api/unplace", { slot: Number(d.slot) }, "Гриб убран в инвентарь"); break;
         case "sell": act("/api/sell", { item: Number(d.item) }, "Продано!"); break;
         case "place":
@@ -455,8 +553,8 @@
     });
 
     function stats(m) {
-      return `<div>👆 ${m.click} спор за клик</div>
-              <div>⏳ ${m.passive} спор/сек</div>`;
+      return `<div>👆 ${fmt(m.click)} спор за клик</div>
+              <div>⏳ ${num(m.passive)} спор/сек</div>`;
     }
     function mushHead(m) {
       return `<div class="head">${iconHtml(m)}<div>
@@ -523,40 +621,210 @@
         </div>`);
     }
 
-    // ---------- магазин: предложение дня ----------
-    async function openShop() {
-      try {
-        await sync();
-        shopData = await api("/api/shop");
-        shopAt = Date.now();
-      } catch (e) { return alertMsg(e.message); }
-      renderShop();
+    // ---------- магазин: предложение дня + аукцион ----------
+    let shopFilter = "all", reloading = false;
+    const norm = (t) => t.toLowerCase().replace(/ё/g, "е").trim();
+    const num = (n) => Number(n).toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+    const secLeft = (v) => Math.max(0, v - (Date.now() - shopAt) / 1000);
+
+    function setShop(d) { shopData = d; shopAt = Date.now(); if (shopOpen) renderShop(); }
+    async function reloadShop() {
+      if (reloading) return;
+      reloading = true;
+      try { await sync(); setShop(await api("/api/shop")); }
+      catch (e) { toast("❌ " + e.message); }
+      reloading = false;
     }
-    function renderShop() {
-      const d = shopData, m = d.mushroom;
-      const left = d.expires_in - (Date.now() - shopAt) / 1000;
-      let body;
-      if (d.bought) {
-        body = `<div class="big">Куплено ✅</div>
-                <div class="muted" style="margin-top:6px">Гриб уже в инвентаре. Новое предложение через
-                  <b id="shopTimer">${fmtTime(left)}</b></div>
-                <div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`;
-      } else {
-        const lvlOk = state.level >= m.level, rich = spores >= d.price;
-        let buy;
-        if (!lvlOk) buy = `<button class="dim" data-act="close">Нужен уровень ${m.level}</button>`;
-        else if (!rich) buy = `<button class="dim" data-act="close">${fmt(d.price)} 🌱 (не хватает)</button>`;
-        else buy = `<button data-act="shopbuy">Купить за ${fmt(d.price)} 🌱</button>`;
-        body = `<div class="big" style="margin-bottom:8px">🛒 Предложение дня</div>
-                ${mushHead(m)}${stats(m)}
-                <div class="${lvlOk ? "muted" : "bad"}">🎓 Нужен уровень: ${m.level}</div>
-                <div class="muted" style="margin-top:6px">⏰ Исчезнет через <b id="shopTimer">${fmtTime(left)}</b></div>
-                <div class="btns">${buy}<button class="ghost" data-act="close">Закрыть</button></div>`;
-      }
-      showCard(body);
+    function openShop() {
+      closeSheet();
       shopOpen = true;
+      $("shop").classList.add("open");
+      renderShop();                                  // сразу то, что уже знаем
+      reloadShop();                                  // и подтягиваем свежее
     }
+    function closeShop() { shopOpen = false; $("shop").classList.remove("open"); $("search").blur(); }
+    $("shopClose").onclick = closeShop;
     $("btnShop").onclick = () => { if (state) openShop(); };
+
+    // почему сейчас нельзя купить ("" = можно)
+    function whyNot(price, needLevel) {
+      if (state.level < needLevel) return "Нужен уровень " + needLevel;
+      if (spores < price) return "Не хватает спор";
+      return "";
+    }
+
+    function renderShop() {
+      if (!shopData) { $("lots").innerHTML = '<div class="empty">Загрузка…</div>'; return; }
+      renderDeal(); renderChips(); renderLots(); renderFoot();
+      updateShopTimers();
+    }
+
+    function renderDeal() {
+      const d = shopData.deal, m = d.mushroom;
+      $("deal").innerHTML = `
+        <div class="badge">−${d.discount}%</div>
+        <div class="dtop"><span>🔥 Предложение дня</span><span>⏰ <span id="dealTimer"></span></span></div>
+        <div class="dmain" data-open="deal">${iconHtml(m)}<div style="min-width:0">
+          <div class="dname">${m.name}${m.glossy ? " ✨" : ""}</div>
+          <div style="color:${m.color};font-size:13px">${m.rarity_name}</div>
+          <div class="st">👆 ${fmt(m.click)} · ⏳ ${num(m.passive)}/с · 🎓 ур. ${m.level}</div></div></div>
+        <div class="dbuy"><div><s>${fmt(d.full_price)}</s><span class="newp">${fmt(d.price)} 🌱</span></div>
+          <button class="buy" id="dealBtn"></button></div>`;
+      refreshBuyStates();
+    }
+
+    function renderChips() {
+      const box = $("chips");
+      box.innerHTML = "";
+      const add = (key, label, color, count) => {
+        const b = document.createElement("button");
+        b.className = "chip" + (shopFilter === key ? " on" : "") + (count === 0 ? " zero" : "");
+        if (color) b.style.setProperty("--c", color);
+        b.innerHTML = label + "<i>" + count + "</i>";
+        b.onclick = () => { shopFilter = key; renderChips(); renderLots(); };
+        box.appendChild(b);
+      };
+      add("all", "Все", "", shopData.lots.filter((l) => l.qty > 0).length);
+      shopData.rarities.forEach((r) => add(r.key, r.name, r.color, r.count));
+    }
+
+    const group = (l) => (l.qty === 0 ? 2 : state.level < l.level ? 1 : 0);
+    function renderLots() {
+      const q = norm($("search").value);
+      const list = shopData.lots
+        .filter((l) => (shopFilter === "all" || l.rarity === shopFilter) && (!q || norm(l.name).includes(q)))
+        .sort((a, b) => group(a) - group(b));          // сначала то, что можно купить; потом по уровню недоступное; раскупленное внизу
+      const box = $("lots");
+      if (!list.length) {
+        let text = "Сейчас аукцион пуст. Загляни после обновления.";
+        if (q) text = "Ничего не нашлось по запросу «" + $("search").value.trim() + "»";
+        else if (shopFilter !== "all") {
+          const r = shopData.rarities.find((x) => x.key === shopFilter);
+          text = "Сейчас на аукционе нет грибов редкости «" + (r ? r.name : "") + "». Они могут появиться после обновления.";
+        }
+        box.innerHTML = "";
+        const e = document.createElement("div");
+        e.className = "empty";
+        e.textContent = text;
+        box.appendChild(e);
+        return;
+      }
+      box.innerHTML = list.map((l) => `
+        <div class="lot${l.qty === 0 ? " sold" : ""}" data-id="${l.id}" style="--c:${l.color}">
+          ${iconHtml(l)}
+          <div class="info">
+            <div class="nm">${l.name}</div>
+            <div class="rr"><span style="color:${l.color}">${l.rarity_name}</span> · в наличии: ${l.qty}</div>
+            <div class="st">👆 ${fmt(l.click)} · ⏳ ${num(l.passive)}/с</div>
+          </div>
+          <button class="buy"></button>
+        </div>`).join("");
+      refreshBuyStates();
+    }
+
+    function renderFoot() {
+      const r = shopData.refresh, b = $("btnRefresh");
+      b.disabled = r.cost == null;
+      b.textContent = r.cost == null ? "Лимит обновлений на сегодня" : "🔄 Обновить лоты · 🌱 " + fmt(r.cost);
+      $("refreshNote").innerHTML = "Обновлений за сутки: " + r.used + "/" + r.max +
+        (r.used > 0 ? ' · сброс через <b id="resetTimer"></b>' : "");
+      refreshBuyStates();
+    }
+
+    // кнопки «купить»: цвет и подпись зависят от уровня и денег (вызывается каждую секунду)
+    function setBtn(b, cls, text) {
+      const c = "buy" + (cls ? " " + cls : "");
+      if (b.className !== c) b.className = c;
+      if (b.textContent !== text) b.textContent = text;
+    }
+    function refreshBuyStates() {
+      if (!shopData || !state) return;
+      document.querySelectorAll("#lots .lot").forEach((el) => {
+        const l = shopData.lots.find((x) => x.id === el.dataset.id);
+        if (!l) return;
+        const b = el.querySelector(".buy");
+        if (l.qty === 0) setBtn(b, "sold", "Раскуплено");
+        else if (state.level < l.level) setBtn(b, "lock", "🔒 ур. " + l.level);
+        else setBtn(b, spores < l.price ? "poor" : "", "🌱 " + fmt(l.price));
+      });
+      const db = $("dealBtn");
+      if (db) {
+        const d = shopData.deal;
+        if (d.bought) setBtn(db, "sold", "Куплено ✅");
+        else if (state.level < d.mushroom.level) setBtn(db, "lock", "🔒 ур. " + d.mushroom.level);
+        else setBtn(db, spores < d.price ? "poor" : "", "Купить");
+      }
+      const rb = $("btnRefresh");
+      if (rb && shopData.refresh.cost != null) rb.classList.toggle("poor", spores < shopData.refresh.cost);
+    }
+
+    function updateShopTimers() {
+      const d = shopData;
+      const set = (id, v) => { const e = $(id); if (e) e.textContent = fmtTime(v); };
+      set("dealTimer", secLeft(d.deal.expires_in));
+      set("lotsTimer", secLeft(d.lots_expire_in));
+      set("resetTimer", secLeft(d.refresh.resets_in));
+      const over = secLeft(d.deal.expires_in) <= 0 || secLeft(d.lots_expire_in) <= 0 ||
+                   (d.refresh.used > 0 && secLeft(d.refresh.resets_in) <= 0);
+      if (over) reloadShop();
+    }
+    function shopTick() { updateShopTimers(); refreshBuyStates(); }
+
+    function buyLot(l) {
+      if (l.qty === 0) return;
+      const why = whyNot(l.price, l.level);
+      if (why) { closeCard(); return toast(why); }
+      act("/api/auction/buy", { mushroom: l.id, price: l.price }, "Куплено: " + l.name + " 🎒")
+        .then((ok) => { if (!ok) reloadShop(); });                   // вдруг аукцион уже обновился
+    }
+    function buyDeal() {
+      const d = shopData.deal;
+      if (d.bought) return;
+      const why = whyNot(d.price, d.mushroom.level);
+      if (why) { closeCard(); return toast(why); }
+      act("/api/shop/buy", {}, "Гриб в инвентаре 🎒").then((ok) => { if (!ok) reloadShop(); });
+    }
+
+    function lotCard(m, price, buyAttrs, extra, blocked) {
+      const why = blocked || whyNot(price, m.level);
+      const buy = why ? `<button class="dim" data-act="close">${why}</button>`
+                      : `<button ${buyAttrs}>Купить за ${fmt(price)} 🌱</button>`;
+      showCard(`${mushHead(m)}${stats(m)}
+        <div class="${state.level < m.level ? "bad" : "muted"}">🎓 Нужен уровень: ${m.level}</div>
+        <div class="muted">💰 Продажа: ${fmt(m.sell)} ✨</div>${extra || ""}
+        <div class="btns">${buy}<button class="ghost" data-act="close">Закрыть</button></div>`);
+    }
+
+    $("lots").addEventListener("click", (e) => {
+      const el = e.target.closest(".lot");
+      const l = el && shopData.lots.find((x) => x.id === el.dataset.id);
+      if (!l) return;
+      if (e.target.closest(".buy")) buyLot(l);
+      else lotCard(l, l.price, `data-act="lotbuy" data-id="${l.id}"`, "", l.qty === 0 ? "Раскуплено" : "");
+    });
+    $("deal").addEventListener("click", (e) => {
+      if (!shopData) return;
+      const d = shopData.deal;
+      if (e.target.closest(".buy")) return buyDeal();
+      if (d.bought) return;
+      lotCard(d.mushroom, d.price, 'data-act="shopbuy"',
+        `<div style="margin-top:6px">🔥 Скидка −${d.discount}%: <s>${fmt(d.full_price)}</s> → <b>${fmt(d.price)} 🌱</b></div>`);
+    });
+    $("search").addEventListener("input", () => { if (shopData) renderLots(); });
+
+    $("btnRefresh").onclick = () => {
+      if (!shopData || shopData.refresh.cost == null) return;
+      const r = shopData.refresh, enough = spores >= r.cost;
+      showCard(`
+        <div class="big">Обновить аукцион?</div>
+        <div style="margin-top:6px">Текущие лоты исчезнут, появятся новые. Цена: <b>${fmt(r.cost)} 🌱</b></div>
+        <div class="muted">Обновление ${r.used + 1} из ${r.max} за сутки, каждое следующее дороже.</div>
+        <div class="muted">У тебя: ${fmt(spores)} 🌱</div>
+        <div class="btns">
+          <button ${enough ? "" : 'class="dim"'} data-act="${enough ? "refresh" : "close"}">${enough ? "Обновить" : "Не хватает спор"}</button>
+          <button class="ghost" data-act="close">Отмена</button>
+        </div>`);
+    };
     $("btnMut").onclick = () => alertMsg("Мутации скоро!");
     $("btnPack").onclick = () => alertMsg("Паки скоро!");
 
@@ -620,13 +888,36 @@
     setInterval(() => {                                                    // время сеанса
       const s = Math.floor((Date.now() - sessionStart) / 1000);
       $("time").textContent = "⏱ " + String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
-      if (shopOpen && shopData) {                                          // обратный отсчёт предложения
-        const left = shopData.expires_in - (Date.now() - shopAt) / 1000;
-        const t = $("shopTimer");
-        if (t) t.textContent = fmtTime(left);
-        if (left <= 0) { shopOpen = false; openShop(); }
-      }
+      if (shopOpen && shopData) shopTick();                                // таймеры и кнопки магазина
     }, 1000);
+
+    // пассивный доход: раз в секунду грибы чуть вздрагивают, над ними бледное "+N" (почти незаметно)
+    const calm = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function passiveTick() {
+      if (!state || document.hidden || calm || shopOpen) return;
+      slotEls.forEach((el, i) => {
+        const m = state.slots[i].mushroom;
+        if (!m || !m.passive || !el.animate) return;
+        const delay = Math.random() * 400;                                 // чтобы все не дёргались хором
+        const ico = el.querySelector(".ico");
+        if (ico) ico.animate([
+          { transform: "translateY(0) rotate(0deg)" },
+          { transform: "translateY(-1.5%) rotate(-1.2deg)", offset: 0.35 },
+          { transform: "translateY(0) rotate(0.8deg)", offset: 0.7 },
+          { transform: "translateY(0) rotate(0deg)" }], { duration: 550, delay, easing: "ease-in-out" });
+        const t = document.createElement("div");
+        t.className = "ptick";
+        t.textContent = "+" + num(m.passive);
+        t.style.fontSize = Math.max(10, el.offsetWidth * 0.2) + "px";
+        el.appendChild(t);
+        t.animate([
+          { opacity: 0, transform: "translate(-50%, 0)" },
+          { opacity: 0.4, transform: "translate(-50%, -6px)", offset: 0.25 },
+          { opacity: 0, transform: "translate(-50%, -20px)" }], { duration: 1300, delay, easing: "ease-out", fill: "both" })
+          .onfinish = () => t.remove();
+      });
+    }
+    setInterval(passiveTick, 1000);
     let idleTicks = 0;
     setInterval(() => {                                                    // связь с сервером
       idleTicks++;
