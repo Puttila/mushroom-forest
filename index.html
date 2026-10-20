@@ -74,11 +74,15 @@
     #nav .dot[hidden] { display: none; }
 
     /* ---------- шторка инвентаря ---------- */
-    #sheet { position: fixed; left: 50%; bottom: 0; width: min(100vw, 520px);
+    #sheet { position: fixed; left: 50%; bottom: env(safe-area-inset-bottom); width: min(100vw, 520px);
+             height: min(72dvh, 560px); max-height: calc(100dvh - env(safe-area-inset-top));
+             overflow-y: auto; overscroll-behavior: contain;
              transform: translate(-50%, 105%); transition: transform .25s ease;
-             background: #1d3325; border-radius: 18px 18px 0 0; padding: 8px 10px 14px;
+             background: #1d3325; border-radius: 18px 18px 0 0;
+             padding: 8px 10px calc(14px + env(safe-area-inset-bottom));
              box-shadow: 0 -6px 24px rgba(0,0,0,.5); z-index: 10; box-sizing: border-box; }
     #sheet.open { transform: translate(-50%, 0); }
+    #sheet.dragging { pointer-events: none; }
     #sheetHead { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 6px; }
     #sheetHead b { font-size: 16px; }
     #invCount { opacity: .7; font-size: 13px; margin-left: 8px; }
@@ -194,13 +198,16 @@
     #afkModal[hidden] { display: none; }
     #afkCard { width: min(86vw, 360px); box-sizing: border-box; padding: 20px;
                border: 1px solid #3d8a4f; border-radius: 18px; background: #1d3325; text-align: center; }
-    #afkEarned { margin: 14px 0 8px; color: #ffe27a; font-size: 25px; font-weight: bold; }
-    #afkBar { height: 12px; margin: 12px 0 6px; overflow: hidden; border-radius: 8px; background: #14211a; }
+    #afkEarned { margin: 14px 0 0; color: #ffe27a; font-size: 25px; font-weight: bold; }
+    #afkBar { height: 12px; margin: 0 0 6px; overflow: hidden; border-radius: 8px; background: #14211a; }
     #afkFill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #3d8a4f, #ffe27a); }
+    #afkTime { font-size: 13px; opacity: .8; }
     #afkClose { margin-top: 16px; border: 0; border-radius: 10px; padding: 10px 24px;
                 background: #3d8a4f; color: #fff; font-size: 15px; }
     .drag-ghost { position: fixed; z-index: 60; width: 64px; height: 64px; pointer-events: none;
                   opacity: .85; transform: translate(-50%, -50%); filter: drop-shadow(0 4px 8px #000); }
+    .afk-particle { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none;
+                    font-size: 18px; will-change: transform, opacity; }
     .slot.drop-target { outline: 3px solid #ffe27a; outline-offset: 2px; border-radius: 50%; }
   </style>
 </head>
@@ -260,11 +267,9 @@
   <div id="info" hidden><div id="card"></div></div>
   <div id="afkModal" hidden>
     <div id="afkCard">
-      <div class="big">🌙 Пока тебя не было</div>
-      <div id="afkEarned"></div>
-      <div id="afkAway"></div>
       <div id="afkBar"><div id="afkFill"></div></div>
-      <div class="muted">Шкала дохода учитывает максимум 8 часов</div>
+      <div id="afkTime"></div>
+      <div id="afkEarned"></div>
       <button id="afkClose">Продолжить</button>
     </div>
   </div>
@@ -290,10 +295,10 @@
     let costEl = null, nextCost = null;
     let targetSlot = null;               // слот, который игрок хочет заполнить (тапнул по ➕)
     let curTab = 0;
-    let holdTimer = null, held = false, infoOpenedAt = 0;
+    let holdTimer = null, held = false, infoOpenedAt = 0, scenePointer = null;
     let busy = false, syncing = false;
     let afkShown = false;
-    let inventoryDrag = null, dragGhost = null, suppressInventoryClick = false;
+    let inventoryGesture = null, dragGhost = null;
     let shopData = null, shopAt = 0, shopOpen = false;
     const sessionStart = Date.now();
 
@@ -376,12 +381,38 @@
       const earned = afk.earned;
       $("afkEarned").textContent = (earned < 0 ? "−" : "+") +
         Math.abs(earned).toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " 🌱";
-      $("afkAway").textContent = "Отсутствовал: " + fmtTime(afk.away_seconds) +
-        " · учтено: " + fmtTime(afk.counted_seconds) + " / 08:00";
-      $("afkFill").style.width = (Math.min(afk.counted_seconds, 8 * 3600) / (8 * 3600) * 100) + "%";
+      const minutes = Math.floor(Math.min(afk.counted_seconds, 8 * 3600) / 60);
+      const hours = Math.floor(minutes / 60);
+      $("afkTime").textContent = hours + ":" + String(minutes % 60).padStart(2, "0") + "/8";
+      $("afkFill").style.width = (minutes / (8 * 60) * 100) + "%";
       $("afkModal").hidden = false;
     }
-    $("afkClose").onclick = () => { $("afkModal").hidden = true; };
+    function animateAfkSpores() {
+      const start = $("afkBar").getBoundingClientRect();
+      const end = $("spores").getBoundingClientRect();
+      const x = start.left + start.width / 2;
+      const y = start.top + start.height / 2;
+      const dx = end.left + end.width / 2 - x;
+      const dy = end.top + end.height / 2 - y;
+      for (let i = 0; i < 16; i++) {
+        const particle = document.createElement("span");
+        particle.className = "afk-particle";
+        particle.textContent = "🌱";
+        particle.style.left = x + "px";
+        particle.style.top = y + "px";
+        document.body.appendChild(particle);
+        particle.animate([
+          { transform: "translate(-50%, -50%) scale(.65)", opacity: 0 },
+          { transform: "translate(-50%, -50%) scale(1)", opacity: 1, offset: .12 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.25)`, opacity: 0 },
+        ], { duration: 520, delay: i * 24, easing: "ease-in", fill: "forwards" })
+          .onfinish = () => particle.remove();
+      }
+    }
+    $("afkClose").onclick = () => {
+      animateAfkSpores();
+      $("afkModal").hidden = true;
+    };
     async function syncOnReturn() {
       while (syncing) await new Promise((r) => setTimeout(r, 50));
       afkShown = false;
@@ -569,32 +600,27 @@
     }
     $("btnInv").onclick = () => { if (state) openSheet(); };
     $("sheetClose").onclick = closeSheet;
-    $("grid").addEventListener("click", (e) => {
-      if (suppressInventoryClick) {
-        suppressInventoryClick = false;
-        return;
-      }
-      const cell = e.target.closest(".cell[data-item]");
-      if (cell && state) {
-        const it = state.inventory.items.find((item) => item.item === Number(cell.dataset.item));
-        if (it) showItem(it);
-      }
-    });
-
     $("grid").addEventListener("pointerdown", (e) => {
       const cell = e.target.closest(".cell[data-item]");
-      if (!cell || !state) return;
+      if (!cell || !state || !e.isPrimary) return;
       const item = state.inventory.items.find((entry) => entry.item === Number(cell.dataset.item));
       if (!item) return;
-      inventoryDrag = { item, pointerId: e.pointerId, x: e.clientX, y: e.clientY, dragging: false };
+      inventoryGesture = {
+        item, pointerId: e.pointerId, x: e.clientX, y: e.clientY, dragging: false, holdTimer: null,
+      };
+      cell.setPointerCapture(e.pointerId);
+      inventoryGesture.holdTimer = setTimeout(() => {
+        if (inventoryGesture && !inventoryGesture.dragging) showItem(item);
+      }, 600);
     });
     document.addEventListener("pointermove", (e) => {
-      if (!inventoryDrag || inventoryDrag.pointerId !== e.pointerId) return;
-      if (!inventoryDrag.dragging &&
-          Math.hypot(e.clientX - inventoryDrag.x, e.clientY - inventoryDrag.y) >= 10) {
-        inventoryDrag.dragging = true;
-        suppressInventoryClick = true;
-        dragGhost = icon(inventoryDrag.item);
+      if (!inventoryGesture || inventoryGesture.pointerId !== e.pointerId) return;
+      if (!inventoryGesture.dragging &&
+          Math.hypot(e.clientX - inventoryGesture.x, e.clientY - inventoryGesture.y) >= 10) {
+        clearTimeout(inventoryGesture.holdTimer);
+        inventoryGesture.dragging = true;
+        $("sheet").classList.add("dragging");
+        dragGhost = icon(inventoryGesture.item);
         dragGhost.classList.add("drag-ghost");
         document.body.appendChild(dragGhost);
       }
@@ -603,32 +629,35 @@
         dragGhost.style.top = e.clientY + "px";
       }
       document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
-      if (inventoryDrag.dragging) {
+      if (inventoryGesture.dragging) {
         const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".slot.empty");
         if (target && target.classList.contains("empty")) target.classList.add("drop-target");
       }
     });
     document.addEventListener("pointerup", (e) => {
-      if (!inventoryDrag || inventoryDrag.pointerId !== e.pointerId) return;
-      const drag = inventoryDrag;
-      inventoryDrag = null;
-      document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
-      if (!drag.dragging) return;
+      if (!inventoryGesture || inventoryGesture.pointerId !== e.pointerId) return;
+      const gesture = inventoryGesture;
+      inventoryGesture = null;
+      clearTimeout(gesture.holdTimer);
+      if (!gesture.dragging) return;
       e.preventDefault();
-      e.stopPropagation();
-      setTimeout(() => { suppressInventoryClick = false; }, 0);
+      e.stopImmediatePropagation();
       const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".slot.empty");
+      $("sheet").classList.remove("dragging");
+      document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
       if (dragGhost) { dragGhost.remove(); dragGhost = null; }
       if (!target) return;
       const slot = Number(target.dataset.index);
       if (state.slots[slot]?.unlocked) {
-        act("/api/place", { item: drag.item.item, slot }, "Гриб посажен 🌱").then((ok) => {
+        act("/api/place", { item: gesture.item.item, slot }, "Гриб посажен 🌱").then((ok) => {
           if (ok) closeSheet();
         });
       }
     }, true);
     document.addEventListener("pointercancel", () => {
-      inventoryDrag = null;
+      if (inventoryGesture) clearTimeout(inventoryGesture.holdTimer);
+      inventoryGesture = null;
+      $("sheet").classList.remove("dragging");
       if (dragGhost) { dragGhost.remove(); dragGhost = null; }
       document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
     });
@@ -974,22 +1003,40 @@
     }
 
     scene.addEventListener("pointerdown", (e) => {
+      if (!e.isPrimary) return;
       held = false;
-      const slotEl = e.target.closest(".slot.filled");
-      if (slotEl) {
-        holdTimer = setTimeout(() => { held = true; showPlaced(Number(slotEl.dataset.index)); }, 400);
+      clearTimeout(holdTimer);
+      const slotEl = e.target.closest(".slot");
+      scenePointer = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+      if (slotEl && (slotEl.classList.contains("filled") || slotEl.classList.contains("empty"))) {
+        slotEl.setPointerCapture(e.pointerId);
+        holdTimer = setTimeout(() => {
+          held = true;
+          const i = Number(slotEl.dataset.index);
+          if (slotEl.classList.contains("filled")) showPlaced(i);
+          else if (slotEl.classList.contains("empty")) {
+            targetSlot = i;
+            refreshSlots();
+            openSheet();
+          }
+        }, 650);
+      }
+    });
+    document.addEventListener("pointermove", (e) => {
+      if (!scenePointer || scenePointer.id !== e.pointerId) return;
+      if (Math.hypot(e.clientX - scenePointer.x, e.clientY - scenePointer.y) >= 12) {
+        scenePointer.moved = true;
+        clearTimeout(holdTimer);
       }
     });
     scene.addEventListener("pointerup", (e) => {
       clearTimeout(holdTimer);
-      if (!held && state) {
+      const moved = scenePointer && scenePointer.id === e.pointerId && scenePointer.moved;
+      scenePointer = null;
+      if (!held && !moved && state) {
         const slotEl = e.target.closest(".slot");
         const i = slotEl ? Number(slotEl.dataset.index) : -1;
-        if (i >= 0 && slotEl.classList.contains("empty")) {
-          targetSlot = i;                             // хочу посадить гриб сюда
-          refreshSlots();
-          openSheet();
-        } else if (i >= 0 && i === nextLocked() && state.slots[i].cost) {
+        if (i >= 0 && i === nextLocked() && state.slots[i].cost) {
           openUnlock(i);
         } else {
           doClick(e);
@@ -997,7 +1044,11 @@
       }
       held = false;
     });
-    scene.addEventListener("pointercancel", () => clearTimeout(holdTimer));
+    scene.addEventListener("pointercancel", () => {
+      clearTimeout(holdTimer);
+      scenePointer = null;
+      held = false;
+    });
     document.addEventListener("contextmenu", (e) => e.preventDefault());
 
     // ---------- таймеры ----------
