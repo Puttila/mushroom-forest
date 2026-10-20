@@ -75,8 +75,7 @@
 
     /* ---------- шторка инвентаря ---------- */
     #sheet { position: fixed; left: 50%; bottom: env(safe-area-inset-bottom); width: min(100vw, 520px);
-             height: min(72dvh, 560px); max-height: calc(100dvh - env(safe-area-inset-top));
-             overflow-y: auto; overscroll-behavior: contain;
+             height: auto; max-height: 58dvh; overflow: visible;
              transform: translate(-50%, 105%); transition: transform .25s ease;
              background: #1d3325; border-radius: 18px 18px 0 0;
              padding: 8px 10px calc(14px + env(safe-area-inset-bottom));
@@ -198,6 +197,7 @@
     #afkModal[hidden] { display: none; }
     #afkCard { width: min(86vw, 360px); box-sizing: border-box; padding: 20px;
                border: 1px solid #3d8a4f; border-radius: 18px; background: #1d3325; text-align: center; }
+    #afkTitle { margin-bottom: 10px; font-size: 16px; opacity: .85; }
     #afkEarned { margin: 14px 0 0; color: #ffe27a; font-size: 25px; font-weight: bold; }
     #afkBar { height: 12px; margin: 0 0 6px; overflow: hidden; border-radius: 8px; background: #14211a; }
     #afkFill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #3d8a4f, #ffe27a); }
@@ -207,7 +207,8 @@
     .drag-ghost { position: fixed; z-index: 60; width: 64px; height: 64px; pointer-events: none;
                   opacity: .85; transform: translate(-50%, -50%); filter: drop-shadow(0 4px 8px #000); }
     .afk-particle { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none;
-                    font-size: 18px; will-change: transform, opacity; }
+                    font-size: 18px; will-change: transform, opacity, filter;
+                    filter: drop-shadow(0 0 5px rgba(255,226,122,.9)); }
     .slot.drop-target { outline: 3px solid #ffe27a; outline-offset: 2px; border-radius: 50%; }
   </style>
 </head>
@@ -269,6 +270,7 @@
     <div id="afkCard">
       <div id="afkBar"><div id="afkFill"></div></div>
       <div id="afkTime"></div>
+      <div id="afkTitle">Ты заработал:</div>
       <div id="afkEarned"></div>
       <button id="afkClose">Продолжить</button>
     </div>
@@ -383,7 +385,7 @@
         Math.abs(earned).toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " 🌱";
       const minutes = Math.floor(Math.min(afk.counted_seconds, 8 * 3600) / 60);
       const hours = Math.floor(minutes / 60);
-      $("afkTime").textContent = hours + ":" + String(minutes % 60).padStart(2, "0") + "/8";
+      $("afkTime").textContent = hours + ":" + String(minutes % 60).padStart(2, "0") + "/8:00";
       $("afkFill").style.width = (minutes / (8 * 60) * 100) + "%";
       $("afkModal").hidden = false;
     }
@@ -395,17 +397,25 @@
       const dx = end.left + end.width / 2 - x;
       const dy = end.top + end.height / 2 - y;
       for (let i = 0; i < 16; i++) {
+        const offsetX = (Math.random() - .5) * start.width * .75;
+        const offsetY = (Math.random() - .5) * start.height;
+        const curve = (Math.random() - .5) * Math.min(100, Math.abs(dx) * .3);
+        const turn = (Math.random() < .5 ? -1 : 1) * (540 + Math.random() * 540);
+        const duration = 650 + Math.random() * 350;
         const particle = document.createElement("span");
         particle.className = "afk-particle";
         particle.textContent = "🌱";
-        particle.style.left = x + "px";
-        particle.style.top = y + "px";
+        particle.style.left = (x + offsetX) + "px";
+        particle.style.top = (y + offsetY) + "px";
         document.body.appendChild(particle);
         particle.animate([
-          { transform: "translate(-50%, -50%) scale(.65)", opacity: 0 },
-          { transform: "translate(-50%, -50%) scale(1)", opacity: 1, offset: .12 },
-          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.25)`, opacity: 0 },
-        ], { duration: 520, delay: i * 24, easing: "ease-in", fill: "forwards" })
+          { transform: "translate(-50%, -50%) rotate(0deg) scale(.55)", opacity: 0, filter: "brightness(1.4)" },
+          { transform: "translate(-50%, -50%) rotate(90deg) scale(1.15)", opacity: 1, offset: .16 },
+          { transform: `translate(calc(-50% + ${dx * .52 + curve}px), calc(-50% + ${dy * .52 - 30}px)) rotate(${turn * .65}deg) scale(.9)`,
+            opacity: 1, offset: .62 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${turn}deg) scale(.25)`,
+            opacity: 0, filter: "brightness(2)" },
+        ], { duration, delay: i * 32, easing: "cubic-bezier(.22,.75,.25,1)", fill: "forwards" })
           .onfinish = () => particle.remove();
       }
     }
@@ -1008,7 +1018,8 @@
       clearTimeout(holdTimer);
       const slotEl = e.target.closest(".slot");
       scenePointer = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
-      if (slotEl && (slotEl.classList.contains("filled") || slotEl.classList.contains("empty"))) {
+      if (slotEl && (slotEl.classList.contains("filled") || slotEl.classList.contains("empty") ||
+          (slotEl.classList.contains("locked") && slotEl.dataset.index == nextLocked()))) {
         slotEl.setPointerCapture(e.pointerId);
         holdTimer = setTimeout(() => {
           held = true;
@@ -1018,6 +1029,8 @@
             targetSlot = i;
             refreshSlots();
             openSheet();
+          } else if (i === nextLocked() && state.slots[i].cost) {
+            openUnlock(i);
           }
         }, 650);
       }
@@ -1036,9 +1049,7 @@
       if (!held && !moved && state) {
         const slotEl = e.target.closest(".slot");
         const i = slotEl ? Number(slotEl.dataset.index) : -1;
-        if (i >= 0 && i === nextLocked() && state.slots[i].cost) {
-          openUnlock(i);
-        } else {
+        if (!slotEl || !slotEl.classList.contains("locked")) {
           doClick(e);
         }
       }
