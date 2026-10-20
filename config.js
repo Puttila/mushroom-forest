@@ -1,1 +1,1 @@
-const API = "https://fun-experiencing-penetration-sure.trycloudflare.com";
+const API = "https://deutsche-adams-licenses-mercury.trycloudflare.com";

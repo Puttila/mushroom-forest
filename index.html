@@ -65,9 +65,9 @@
     .glossy { filter: drop-shadow(0 0 5px #ffe27a) brightness(1.15); }
 
     /* ---------- нижняя панель ---------- */
-    #nav { display: flex; gap: 8px; background: #0e1712; padding: 8px; }
-    #nav button { flex: 1; padding: 12px 0; border: 0; border-radius: 12px; position: relative;
-                  background: #24402c; color: #e8f5e0; font-size: 14px; }
+    #nav { display: flex; gap: 6px; background: #0e1712; padding: 8px; }
+    #nav button { flex: 1; min-width: 0; padding: 10px 1px; border: 0; border-radius: 12px; position: relative;
+                  background: #24402c; color: #e8f5e0; font-size: 12px; }
     #nav button:active { background: #2f5a3b; }
     #nav .dot { position: absolute; top: 5px; right: 8px; width: 9px; height: 9px;
                 border-radius: 50%; background: #ff5d5d; }
@@ -93,7 +93,7 @@
     #tabs button.buy { background: #3a3a2a; color: #ffe27a; }
     #grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
     .cell { aspect-ratio: 1; border-radius: 8px; background: #14211a; border: 2px solid #2c4636;
-            position: relative; box-sizing: border-box; padding: 2px; font-size: 22px; }
+            position: relative; box-sizing: border-box; padding: 2px; font-size: 22px; touch-action: none; }
     .cell .ico { width: 100%; height: 100%; font-size: inherit; }
     .cell .lv { position: absolute; right: -2px; bottom: -2px; background: #8a2f2f; color: #fff;
                 font-size: 10px; border-radius: 6px; padding: 0 4px; }
@@ -189,6 +189,19 @@
              background: rgba(20,40,28,.95); border: 1px solid #3d8a4f; padding: 8px 14px;
              border-radius: 12px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .25s; }
     #toast.show { opacity: 1; }
+    #afkModal { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center;
+                padding: 20px; background: rgba(0,0,0,.72); }
+    #afkModal[hidden] { display: none; }
+    #afkCard { width: min(86vw, 360px); box-sizing: border-box; padding: 20px;
+               border: 1px solid #3d8a4f; border-radius: 18px; background: #1d3325; text-align: center; }
+    #afkEarned { margin: 14px 0 8px; color: #ffe27a; font-size: 25px; font-weight: bold; }
+    #afkBar { height: 12px; margin: 12px 0 6px; overflow: hidden; border-radius: 8px; background: #14211a; }
+    #afkFill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #3d8a4f, #ffe27a); }
+    #afkClose { margin-top: 16px; border: 0; border-radius: 10px; padding: 10px 24px;
+                background: #3d8a4f; color: #fff; font-size: 15px; }
+    .drag-ghost { position: fixed; z-index: 60; width: 64px; height: 64px; pointer-events: none;
+                  opacity: .85; transform: translate(-50%, -50%); filter: drop-shadow(0 4px 8px #000); }
+    .slot.drop-target { outline: 3px solid #ffe27a; outline-offset: 2px; border-radius: 50%; }
   </style>
 </head>
 <body>
@@ -207,10 +220,11 @@
     <div id="stage"><div id="scene"><img id="meadow" src="assets/meadow.webp" alt="" draggable="false"></div></div>
 
     <div id="nav">
-      <button id="btnInv">🎒 Инвентарь</button>
-      <button id="btnShop">🛒 Магазин<span class="dot" id="shopDot" hidden></span></button>
-      <button id="btnMut">🧬 Мутации</button>
+      <button id="btnInv" title="Инвентарь">🎒 Инв.</button>
+      <button id="btnShop" title="Магазин">🛒 Маг.<span class="dot" id="shopDot" hidden></span></button>
+      <button id="btnMut" title="Мутации">🧬 Мутац.</button>
       <button id="btnPack">🎁 Паки</button>
+      <button id="btnUpgrades" title="Улучшения">⬆️ Улучш.</button>
     </div>
   </div>
 
@@ -244,6 +258,16 @@
   </div>
 
   <div id="info" hidden><div id="card"></div></div>
+  <div id="afkModal" hidden>
+    <div id="afkCard">
+      <div class="big">🌙 Пока тебя не было</div>
+      <div id="afkEarned"></div>
+      <div id="afkAway"></div>
+      <div id="afkBar"><div id="afkFill"></div></div>
+      <div class="muted">Шкала дохода учитывает максимум 8 часов</div>
+      <button id="afkClose">Продолжить</button>
+    </div>
+  </div>
   <div id="toast"></div>
 
   <script>
@@ -268,6 +292,8 @@
     let curTab = 0;
     let holdTimer = null, held = false, infoOpenedAt = 0;
     let busy = false, syncing = false;
+    let afkShown = false;
+    let inventoryDrag = null, dragGhost = null, suppressInventoryClick = false;
     let shopData = null, shopAt = 0, shopOpen = false;
     const sessionStart = Date.now();
 
@@ -332,7 +358,12 @@
       pending = 0;
       try {
         if (!tg.initData) throw new Error("нет initData (открыто не из Telegram?)");
-        applyState(await api("/api/sync", { clicks }));
+        const result = await api("/api/sync", { clicks });
+        applyState(result);
+        if (!afkShown && !document.hidden) {
+          afkShown = true;
+          showAfkSummary(result.afk);
+        }
         $("status").textContent = "";
       } catch (e) {
         pending += clicks;
@@ -340,6 +371,25 @@
       }
       syncing = false;
     }
+
+    function showAfkSummary(afk) {
+      const earned = afk.earned;
+      $("afkEarned").textContent = (earned < 0 ? "−" : "+") +
+        Math.abs(earned).toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " 🌱";
+      $("afkAway").textContent = "Отсутствовал: " + fmtTime(afk.away_seconds) +
+        " · учтено: " + fmtTime(afk.counted_seconds) + " / 08:00";
+      $("afkFill").style.width = (Math.min(afk.counted_seconds, 8 * 3600) / (8 * 3600) * 100) + "%";
+      $("afkModal").hidden = false;
+    }
+    $("afkClose").onclick = () => { $("afkModal").hidden = true; };
+    async function syncOnReturn() {
+      while (syncing) await new Promise((r) => setTimeout(r, 50));
+      afkShown = false;
+      await sync();
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) syncOnReturn();
+    });
 
     // действие, которое меняет состояние (купить, поставить, продать…)
     async function act(path, body, okText) {
@@ -478,6 +528,7 @@
         cell.className = "cell";
         const it = part[i];
         if (it) {
+          cell.dataset.item = it.item;
           cell.style.borderColor = it.color;
           cell.appendChild(icon(it));
           if (it.level > state.level) {
@@ -486,7 +537,6 @@
             lv.textContent = "ур." + it.level;
             cell.appendChild(lv);
           }
-          cell.onclick = () => showItem(it);
         }
         grid.appendChild(cell);
       }
@@ -519,6 +569,69 @@
     }
     $("btnInv").onclick = () => { if (state) openSheet(); };
     $("sheetClose").onclick = closeSheet;
+    $("grid").addEventListener("click", (e) => {
+      if (suppressInventoryClick) {
+        suppressInventoryClick = false;
+        return;
+      }
+      const cell = e.target.closest(".cell[data-item]");
+      if (cell && state) {
+        const it = state.inventory.items.find((item) => item.item === Number(cell.dataset.item));
+        if (it) showItem(it);
+      }
+    });
+
+    $("grid").addEventListener("pointerdown", (e) => {
+      const cell = e.target.closest(".cell[data-item]");
+      if (!cell || !state) return;
+      const item = state.inventory.items.find((entry) => entry.item === Number(cell.dataset.item));
+      if (!item) return;
+      inventoryDrag = { item, pointerId: e.pointerId, x: e.clientX, y: e.clientY, dragging: false };
+    });
+    document.addEventListener("pointermove", (e) => {
+      if (!inventoryDrag || inventoryDrag.pointerId !== e.pointerId) return;
+      if (!inventoryDrag.dragging &&
+          Math.hypot(e.clientX - inventoryDrag.x, e.clientY - inventoryDrag.y) >= 10) {
+        inventoryDrag.dragging = true;
+        suppressInventoryClick = true;
+        dragGhost = icon(inventoryDrag.item);
+        dragGhost.classList.add("drag-ghost");
+        document.body.appendChild(dragGhost);
+      }
+      if (dragGhost) {
+        dragGhost.style.left = e.clientX + "px";
+        dragGhost.style.top = e.clientY + "px";
+      }
+      document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
+      if (inventoryDrag.dragging) {
+        const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".slot.empty");
+        if (target && target.classList.contains("empty")) target.classList.add("drop-target");
+      }
+    });
+    document.addEventListener("pointerup", (e) => {
+      if (!inventoryDrag || inventoryDrag.pointerId !== e.pointerId) return;
+      const drag = inventoryDrag;
+      inventoryDrag = null;
+      document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
+      if (!drag.dragging) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setTimeout(() => { suppressInventoryClick = false; }, 0);
+      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".slot.empty");
+      if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+      if (!target) return;
+      const slot = Number(target.dataset.index);
+      if (state.slots[slot]?.unlocked) {
+        act("/api/place", { item: drag.item.item, slot }, "Гриб посажен 🌱").then((ok) => {
+          if (ok) closeSheet();
+        });
+      }
+    }, true);
+    document.addEventListener("pointercancel", () => {
+      inventoryDrag = null;
+      if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+      document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
+    });
 
     // ---------- карточки ----------
     function showCard(html) {
@@ -578,7 +691,7 @@
         <div class="${state.level < it.level ? "bad" : "muted"}">🎓 Нужен уровень: ${it.level}</div>
         <div class="btns">
           ${place}
-          <button class="sell" data-act="sell" data-item="${it.item}">Продать за ${fmt(it.sell)} ✨</button>
+          <button class="sell" data-act="sell" data-item="${it.item}">Продать за ${fmt(it.sale_dust)} ✨</button>
           <button class="ghost" data-act="close">Закрыть</button>
         </div>`);
     }
@@ -587,7 +700,7 @@
     function showPlaced(i) {
       const m = state.slots[i].mushroom;
       showCard(`${mushHead(m)}${stats(m)}
-        <div class="muted">💰 Продажа: ${fmt(m.sell)} ✨ (сначала убери в инвентарь)</div>
+        <div class="muted">💰 Продажа: ${fmt(m.sale_dust)} ✨ (сначала убери в инвентарь)</div>
         <div class="btns">
           <button data-act="unplace" data-slot="${i}">Убрать в инвентарь</button>
           <button class="ghost" data-act="close">Закрыть</button>
@@ -791,7 +904,7 @@
                       : `<button ${buyAttrs}>Купить за ${fmt(price)} 🌱</button>`;
       showCard(`${mushHead(m)}${stats(m)}
         <div class="${state.level < m.level ? "bad" : "muted"}">🎓 Нужен уровень: ${m.level}</div>
-        <div class="muted">💰 Продажа: ${fmt(m.sell)} ✨</div>${extra || ""}
+        ${extra || ""}
         <div class="btns">${buy}<button class="ghost" data-act="close">Закрыть</button></div>`);
     }
 
@@ -827,6 +940,10 @@
     };
     $("btnMut").onclick = () => alertMsg("Мутации скоро!");
     $("btnPack").onclick = () => alertMsg("Паки скоро!");
+    $("btnUpgrades").onclick = () => showCard(`
+      <div class="big">⬆️ Улучшения</div>
+      <div class="muted" style="margin-top:8px">Ветка улучшений скоро появится. Здесь будут улучшения параметров игры.</div>
+      <div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`);
 
     // ---------- клики по поляне ----------
     function doClick(e) {                             // клик по поляне = клик сразу по всем грибам
@@ -921,7 +1038,7 @@
     let idleTicks = 0;
     setInterval(() => {                                                    // связь с сервером
       idleTicks++;
-      if (!busy && (pending > 0 || idleTicks >= 10)) { idleTicks = 0; sync(); }
+      if (!document.hidden && !busy && (pending > 0 || idleTicks >= 10)) { idleTicks = 0; sync(); }
     }, 1000);
 
     layout();
