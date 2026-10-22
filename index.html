@@ -1295,7 +1295,7 @@
       if (shopOpen && shopData) shopTick();                                // таймеры и кнопки магазина
     }, 1000);
 
-    // пассивный доход: раз в секунду грибы чуть вздрагивают, над ними бледное "+N" (почти незаметно)
+    // пассивный доход: раз в секунду грибы чуть вздрагивают, над ними бледное "+N" (почти незаметно).
     const calm = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
     function passiveTick() {
       if (!state || document.hidden || calm || shopOpen) return;
