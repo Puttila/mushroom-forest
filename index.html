@@ -61,45 +61,83 @@
 
     /* ---------- иконка гриба (картинка или эмодзи) ---------- */
     .ico { display: flex; align-items: center; justify-content: center; font-size: 28px; line-height: 1; }
-    .ico img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+    .ico img { width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; pointer-events: none; }
     .glossy { filter: drop-shadow(0 0 5px #ffe27a) brightness(1.15); }
 
-    /* ---------- нижняя панель ---------- */
-    #nav { display: flex; gap: 6px; background: #0e1712; padding: 8px; }
-    #nav button { flex: 1; min-width: 0; padding: 10px 1px; border: 0; border-radius: 12px; position: relative;
-                  background: #24402c; color: #e8f5e0; font-size: 12px; }
-    #nav button:active { background: #2f5a3b; }
-    #nav .dot { position: absolute; top: 5px; right: 8px; width: 9px; height: 9px;
-                border-radius: 50%; background: #ff5d5d; }
+    /* ---------- нижняя панель: крупные, приподняты от края, выпуклые ---------- */
+    #nav { display: flex; gap: 8px; padding: 10px 10px calc(16px + env(safe-area-inset-bottom));
+           background: linear-gradient(#101b14, #0a110d); border-top: 1px solid #2c4636;
+           box-shadow: 0 -4px 14px rgba(0,0,0,.45); }
+    #nav button { flex: 1; min-width: 0; min-height: 64px; padding: 6px 2px; position: relative;
+                  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+                  border: 1px solid #4a7a58; border-radius: 16px; color: #f2fbe8;
+                  background: linear-gradient(#3a6b46, #25492f);
+                  box-shadow: 0 4px 0 #112519, 0 6px 10px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.18);
+                  font-size: 11.5px; font-weight: 700; transition: transform .08s, box-shadow .08s; }
+    #nav button .ic { font-size: 26px; line-height: 1; }
+    #nav button .lb { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #nav button:active { transform: translateY(3px); box-shadow: 0 1px 0 #112519, inset 0 1px 0 rgba(255,255,255,.1); }
+    #nav .dot { position: absolute; top: 6px; right: 8px; width: 10px; height: 10px;
+                border-radius: 50%; background: #ff5d5d; box-shadow: 0 0 0 2px #25492f; }
     #nav .dot[hidden] { display: none; }
 
     /* ---------- шторка инвентаря ---------- */
-    #sheet { position: fixed; left: 50%; bottom: env(safe-area-inset-bottom); width: min(100vw, 520px);
-             height: auto; max-height: 58dvh; overflow: visible;
-             transform: translate(-50%, 105%); transition: transform .25s ease;
+    #sheet { position: fixed; left: 50%; bottom: 0; width: min(100vw, 520px);
+             display: flex; flex-direction: column; max-height: 66dvh; overflow: hidden;
+             transform: translate(-50%, 105%); visibility: hidden;
+             transition: transform .25s ease, visibility 0s .25s;
              background: #1d3325; border-radius: 18px 18px 0 0;
              padding: 8px 10px calc(14px + env(safe-area-inset-bottom));
              box-shadow: 0 -6px 24px rgba(0,0,0,.5); z-index: 10; box-sizing: border-box; }
-    #sheet.open { transform: translate(-50%, 0); }
+    #sheet.open { transform: translate(-50%, 0); visibility: visible; transition: transform .25s ease, visibility 0s; }
     #sheet.dragging { pointer-events: none; }
-    #sheetHead { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 6px; }
+    #sheetHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 4px 6px; flex: none; }
     #sheetHead b { font-size: 16px; }
     #invCount { opacity: .7; font-size: 13px; margin-left: 8px; }
+    #sheetBtns { display: flex; gap: 8px; align-items: center; }
+    #sellAll { border: 0; border-radius: 14px; padding: 7px 12px; background: #8a6a1f; color: #fff;
+               font-size: 13px; font-weight: bold; white-space: nowrap; }
+    #sellAll.on { background: #b8452f; }
     #sheetClose { border: 0; background: #2a4533; color: #e8f5e0; width: 32px; height: 32px;
                   border-radius: 50%; font-size: 16px; }
-    #sheetHint { font-size: 13px; color: #ffe27a; min-height: 0; padding: 0 4px; }
+    #sheetHint { font-size: 13px; color: #ffe27a; min-height: 0; padding: 0 4px; flex: none; }
     #sheetHint:empty { display: none; }
-    #tabs { display: flex; gap: 6px; padding: 4px 0 8px; overflow-x: auto; }
+    #sellPanel { flex: none; padding: 2px 0 8px; }
+    #sellPanel[hidden] { display: none; }
+    #sellChips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; scrollbar-width: none; }
+    #sellChips::-webkit-scrollbar { display: none; }
+    #sellGo { width: 100%; border: 0; border-radius: 12px; padding: 11px; background: #b8452f; color: #fff;
+              font-size: 15px; font-weight: bold; }
+    #sellGo:disabled { background: #3a3a3a; color: #aaa; }
+    #sheet.selling #tabs { display: none; }
+    #tabs { display: flex; gap: 6px; padding: 4px 0 8px; overflow-x: auto; flex: none; }
     #tabs button { border: 0; border-radius: 8px; padding: 6px 12px; background: #2a4533;
                    color: #e8f5e0; font-size: 13px; white-space: nowrap; }
     #tabs button.on { background: #3d8a4f; }
     #tabs button.buy { background: #3a3a2a; color: #ffe27a; }
-    #grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-    .cell { aspect-ratio: 1; border-radius: 8px; background: #14211a; border: 2px solid #2c4636;
-            position: relative; box-sizing: border-box; padding: 2px; font-size: 22px; touch-action: none; }
-    .cell .ico { width: 100%; height: 100%; font-size: inherit; }
+    /* minmax(0,1fr) и иконка поверх ячейки: картинка не может растянуть сетку */
+    #grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; padding: 3px;
+            flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+    .cell { aspect-ratio: 1; min-width: 0; min-height: 0; border-radius: 8px; background: #14211a;
+            border: 2px solid #2c4636; position: relative; box-sizing: border-box; font-size: 20px; touch-action: none; }
+    .cell .ico { position: absolute; inset: 2px; width: auto; height: auto; font-size: inherit; }
+    .cell .ico img { position: absolute; inset: 0; }
     .cell .lv { position: absolute; right: -2px; bottom: -2px; background: #8a2f2f; color: #fff;
                 font-size: 10px; border-radius: 6px; padding: 0 4px; }
+    #sheet.selling .cell[data-item] { opacity: .35; }
+    #sheet.selling .cell.picked { opacity: 1; outline: 2px solid #ff7a5c; }
+
+    /* ---------- проверка «ты не робот?» ---------- */
+    #antiBar { font-size: 13px; color: #ffb4b4; padding-top: 4px; }
+    #antiBar:empty { display: none; }
+    #antiModal { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; padding: 20px;
+                 background: rgba(0,0,0,.78); }
+    #antiModal[hidden] { display: none; }
+    #antiCard { width: min(88vw, 340px); box-sizing: border-box; padding: 20px; text-align: center;
+                border: 1px solid #3d8a4f; border-radius: 18px; background: #1d3325; }
+    #antiOpts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+    #antiOpts button { border: 0; border-radius: 14px; padding: 12px 0; font-size: 34px; background: #2a4533; }
+    #antiOpts button:active { background: #3d8a4f; }
 
     /* ---------- пассивный доход: еле заметная дрожь гриба и бледное "+N" над ним ---------- */
     .slot .ico { transform-origin: 50% 86%; }
@@ -223,25 +261,30 @@
         <span id="xptext">0/100</span>
       </div>
       <div id="status"></div>
+      <div id="antiBar"></div>
     </div>
 
     <div id="stage"><div id="scene"><img id="meadow" src="assets/meadow.webp" alt="" draggable="false"></div></div>
 
     <div id="nav">
-      <button id="btnInv" title="Инвентарь">🎒 Инв.</button>
-      <button id="btnShop" title="Магазин">🛒 Маг.<span class="dot" id="shopDot" hidden></span></button>
-      <button id="btnMut" title="Мутации">🧬 Мутац.</button>
-      <button id="btnPack">🎁 Паки</button>
-      <button id="btnUpgrades" title="Улучшения">⬆️ Улучш.</button>
+      <button id="btnInv" title="Инвентарь"><span class="ic">🎒</span><span class="lb">Инвентарь</span></button>
+      <button id="btnShop" title="Магазин"><span class="ic">🛒</span><span class="lb">Магазин</span><span class="dot" id="shopDot" hidden></span></button>
+      <button id="btnMut" title="Мутации"><span class="ic">🧬</span><span class="lb">Мутации</span></button>
+      <button id="btnPack" title="Паки"><span class="ic">🎁</span><span class="lb">Паки</span></button>
+      <button id="btnUpgrades" title="Улучшения"><span class="ic">⬆️</span><span class="lb">Улучш.</span></button>
     </div>
   </div>
 
   <div id="sheet">
     <div id="sheetHead">
       <div><b>🎒 Инвентарь</b><span id="invCount"></span></div>
-      <button id="sheetClose">✕</button>
+      <div id="sheetBtns"><button id="sellAll">💰 Продать все</button><button id="sheetClose">✕</button></div>
     </div>
     <div id="sheetHint"></div>
+    <div id="sellPanel" hidden>
+      <div id="sellChips"></div>
+      <button id="sellGo" disabled>Выбери редкости</button>
+    </div>
     <div id="tabs"></div>
     <div id="grid"></div>
   </div>
@@ -273,6 +316,14 @@
       <div id="afkTitle">Ты заработал:</div>
       <div id="afkEarned"></div>
       <button id="afkClose">Продолжить</button>
+    </div>
+  </div>
+  <div id="antiModal" hidden>
+    <div id="antiCard">
+      <div class="big">🤖 Проверка</div>
+      <div class="muted" style="margin-top:6px">Клики слишком ровные. Подтверди, что ты человек:</div>
+      <div id="antiAsk" class="big" style="margin-top:10px"></div>
+      <div id="antiOpts"></div>
     </div>
   </div>
   <div id="toast"></div>
@@ -319,6 +370,7 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => $("toast").classList.remove("show"), 1800);
     }
+    const sellIcon = () => (state && state.sell_currency === "spores" ? "🌱" : "✨");
     const nextLocked = () => (state ? state.slots.findIndex((s) => !s.unlocked) : -1);
 
     // иконка гриба: твоя текстура, а если файла нет, то эмодзи (и больше этот файл не запрашиваем)
@@ -353,19 +405,38 @@
       const r = await fetch(API + path, opt);
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        throw new Error(typeof err.detail === "string" ? err.detail : "ошибка " + r.status);
+        const e = new Error(typeof err.detail === "string" ? err.detail : "ошибка " + r.status);
+        e.status = r.status;
+        throw e;
       }
       return r.json();
     }
 
+    // Клики уходят на сервер пачками вместе со "следами" нажатий (время, место, длительность):
+    // по ним сервер отличает человека от автокликера. Пачка хранится, пока сервер её не подтвердит.
+    const CLIENT_V = 2, MAX_BATCH = 200, MAX_TAP_LOG = 100;
+    let outbox = null, tapLog = [], tapBase = null;
+    const unsent = () => pending + (outbox ? outbox.clicks : 0);
+    function newBid() {
+      const a = new Uint8Array(8);
+      (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach((_, i) => a[i] = Math.random() * 256);
+      return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+    }
+    function takeBatch() {
+      const clicks = Math.min(pending, MAX_BATCH);
+      pending -= clicks;
+      const taps = tapLog;
+      tapLog = []; tapBase = null;
+      return { bid: newBid(), clicks, taps };
+    }
     async function sync() {
       if (syncing) return;
       syncing = true;
-      const clicks = pending;
-      pending = 0;
+      if (!outbox && pending > 0) outbox = takeBatch();
       try {
         if (!tg.initData) throw new Error("нет initData (открыто не из Telegram?)");
-        const result = await api("/api/sync", { clicks });
+        const result = await api("/api/sync", { v: CLIENT_V, ...(outbox || { clicks: 0 }) });
+        outbox = null;
         applyState(result);
         if (!afkShown && !document.hidden) {
           afkShown = true;
@@ -373,7 +444,7 @@
         }
         $("status").textContent = "";
       } catch (e) {
-        pending += clicks;
+        if (e.status >= 400 && e.status < 500 && e.status !== 429) outbox = null;   // сервер отверг пачку: повторять нет смысла
         $("status").textContent = "❌ " + e.message;
       }
       syncing = false;
@@ -542,6 +613,7 @@
       const inv = state.inventory;
       if (curTab >= inv.tabs) curTab = 0;
       $("invCount").textContent = inv.items.length + "/" + inv.capacity;
+      if (sellMode) renderSell();
       $("sheetHint").textContent = targetSlot != null ? "Выбери гриб для слота №" + (targetSlot + 1) : "";
 
       const tabs = $("tabs");
@@ -570,6 +642,7 @@
         const it = part[i];
         if (it) {
           cell.dataset.item = it.item;
+          if (sellMode && sellPicks(it)) cell.classList.add("picked");
           cell.style.borderColor = it.color;
           cell.appendChild(icon(it));
           if (it.level > state.level) {
@@ -588,13 +661,14 @@
       clickPower = s.click_power;
       passive = s.passive;
       dust = s.dust;
-      spores = s.spores + pending * clickPower;       // + клики, сделанные пока шёл запрос
-      xp = s.xp + pending;
+      spores = s.spores + unsent() * clickPower;       // + клики, сделанные пока шёл запрос
+      xp = s.xp + unsent();
       const sig = JSON.stringify(s.slots) + targetSlot;
       if (sig !== slotSig) { slotSig = sig; renderSlots(); }
       const isig = JSON.stringify(s.inventory) + s.level;
       if (isig !== invSig) { invSig = isig; renderInv(); }
       $("shopDot").hidden = !s.offer.available;
+      applyAnti(s.anti);
       render();
     }
 
@@ -605,6 +679,7 @@
       renderSlots();
     }
     function closeSheet() {
+      if (sellMode) toggleSell(false);
       $("sheet").classList.remove("open");
       if (targetSlot != null) { targetSlot = null; if (state) refreshSlots(); }
     }
@@ -672,6 +747,66 @@
       document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
     });
 
+    // ---------- «Продать все»: выбор редкостей ----------
+    let sellMode = false, sellSel = new Set(), keepGlossy = true;
+    const sellPicks = (it) => sellSel.has(it.rarity) && !(keepGlossy && it.glossy);
+    function sellList() {                       // что сейчас будет продано
+      const list = state.inventory.items.filter(sellPicks);
+      if (list.length && list.length >= state.inventory.items.length + state.slots.filter((x) => x.mushroom).length) {
+        list.sort((a, b) => b.sale_dust - a.sale_dust).shift();      // один гриб остаётся
+      }
+      return list;
+    }
+    function renderSell() {
+      $("sheet").classList.toggle("selling", sellMode);
+      $("sellPanel").hidden = !sellMode;
+      $("sellAll").classList.toggle("on", sellMode);
+      $("sellAll").textContent = sellMode ? "✕ Отмена" : "💰 Продать все";
+      if (!sellMode || !state) return;
+      const items = state.inventory.items;
+      const box = $("sellChips");
+      box.innerHTML = "";
+      const chip = (label, color, on, fn) => {
+        const b = document.createElement("button");
+        b.className = "chip" + (on ? " on" : "");
+        if (color) b.style.setProperty("--c", color);
+        b.innerHTML = label;
+        b.onclick = fn;
+        box.appendChild(b);
+      };
+      const seen = new Map();
+      items.forEach((it) => {
+        const r = seen.get(it.rarity) || { name: it.rarity_name, color: it.color, rank: it.rank, n: 0 };
+        r.n++; seen.set(it.rarity, r);
+      });
+      [...seen.entries()].sort((a, b) => a[1].rank - b[1].rank).forEach(([key, r]) =>
+        chip(r.name + "<i>" + r.n + "</i>", r.color, sellSel.has(key), () => {
+          sellSel.has(key) ? sellSel.delete(key) : sellSel.add(key); renderSell(); renderInv();
+        }));
+      chip("✨ Глянцевые остаются", "#ffe27a", keepGlossy, () => { keepGlossy = !keepGlossy; renderSell(); renderInv(); });
+      const list = sellList();
+      const total = list.reduce((sum, it) => sum + it.sale_dust, 0);
+      $("sellGo").disabled = !list.length;
+      $("sellGo").textContent = list.length ? "Продать " + list.length + " шт. за " + fmt(total) + " " + sellIcon()
+                                            : (sellSel.size ? "Нечего продавать" : "Выбери редкости");
+    }
+    function toggleSell(on) {
+      sellMode = on; sellSel = new Set();
+      if (state) { renderSell(); renderInv(); }
+    }
+    $("sellAll").onclick = () => toggleSell(!sellMode);
+    $("sellGo").onclick = () => {
+      const list = sellList();
+      if (!list.length) return;
+      const total = list.reduce((sum, it) => sum + it.sale_dust, 0);
+      const risky = list.some((it) => it.rank >= 3);
+      showCard(`<div class="big">Продать ${list.length} шт.?</div>
+        <div style="margin-top:6px">Выручка: <b>${fmt(total)} ${sellIcon()}</b></div>
+        ${risky ? '<div class="bad" style="margin-top:6px">Среди них есть редкие и выше!</div>' : ""}
+        <div class="btns"><button class="sell" data-act="sellbulk">Продать</button>
+          <button class="ghost" data-act="close">Отмена</button></div>`);
+    };
+
     // ---------- карточки ----------
     function showCard(html) {
       $("card").innerHTML = html;
@@ -695,6 +830,13 @@
         case "lotbuy": { const l = shopData && shopData.lots.find((x) => x.id === d.id); if (l) buyLot(l); break; }
         case "refresh": act("/api/auction/refresh", {}, "Аукцион обновлён 🔄"); break;
         case "unplace": act("/api/unplace", { slot: Number(d.slot) }, "Гриб убран в инвентарь"); break;
+        case "sellbulk": {
+          const rarities = [...sellSel];
+          act("/api/sell_bulk", { rarities, keep_glossy: keepGlossy }).then((ok) => {
+            if (ok) { toggleSell(false); toast("Продано"); }
+          });
+          break;
+        }
         case "sell": act("/api/sell", { item: Number(d.item) }, "Продано!"); break;
         case "place":
           act("/api/place", { item: Number(d.item), slot: Number(d.slot) }, "Гриб посажен 🌱").then((ok) => {
@@ -730,7 +872,7 @@
         <div class="${state.level < it.level ? "bad" : "muted"}">🎓 Нужен уровень: ${it.level}</div>
         <div class="btns">
           ${place}
-          <button class="sell" data-act="sell" data-item="${it.item}">Продать за ${fmt(it.sale_dust)} ✨</button>
+          <button class="sell" data-act="sell" data-item="${it.item}">Продать за ${fmt(it.sale_dust)} ${sellIcon()}</button>
           <button class="ghost" data-act="close">Закрыть</button>
         </div>`);
     }
@@ -739,7 +881,7 @@
     function showPlaced(i) {
       const m = state.slots[i].mushroom;
       showCard(`${mushHead(m)}${stats(m)}
-        <div class="muted">💰 Продажа: ${fmt(m.sale_dust)} ✨ (сначала убери в инвентарь)</div>
+        <div class="muted">💰 Продажа: ${fmt(m.sale_dust)} ${sellIcon()} (сначала убери в инвентарь)</div>
         <div class="btns">
           <button data-act="unplace" data-slot="${i}">Убрать в инвентарь</button>
           <button class="ghost" data-act="close">Закрыть</button>
@@ -984,9 +1126,51 @@
       <div class="muted" style="margin-top:8px">Ветка улучшений скоро появится. Здесь будут улучшения параметров игры.</div>
       <div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`);
 
+    // ---------- проверка «ты не робот?» ----------
+    let anti = { state: "ok" }, antiAt = 0;
+    function applyAnti(a) {
+      if (!a) return;
+      anti = a; antiAt = Date.now();
+      $("antiModal").hidden = a.state !== "challenge";
+      if (a.state === "challenge") {
+        $("antiAsk").textContent = "Нажми на " + a.ask;
+        $("antiOpts").innerHTML = "";
+        a.options.forEach((o) => {
+          const b = document.createElement("button");
+          b.textContent = o;
+          b.onclick = () => answerAnti(o);
+          $("antiOpts").appendChild(b);
+        });
+      }
+      tickAnti();
+    }
+    function tickAnti() {
+      const left = anti.state === "blocked" ? Math.max(0, anti.until - (Date.now() - antiAt) / 1000) : 0;
+      $("antiBar").textContent = left > 0 ? "⏸ Клики на паузе: " + fmtTime(left) : "";
+    }
+    setInterval(tickAnti, 500);
+    async function answerAnti(choice) {
+      try {
+        const res = await api("/api/anti/answer", { choice });
+        applyState(res);
+        if (res.answer === "wrong") toast("Не тот значок, попробуй ещё");
+        else if (res.answer === "ok") toast("Спасибо! Можно кликать");
+      } catch (e) { toast("❌ " + e.message); }
+    }
+    const clicksPaused = () => anti.state !== "ok" && (anti.state !== "blocked" || Date.now() - antiAt < anti.until * 1000);
+
     // ---------- клики по поляне ----------
+    const downAt = new Map();                          // когда палец/кнопка опустились (для длительности нажатия)
     function doClick(e) {                             // клик по поляне = клик сразу по всем грибам
-      if (!state || clickPower === 0) return;
+      if (!e.isTrusted || !state || clickPower === 0) return;   // событие, сделанное скриптом, не считаем
+      if (clicksPaused()) { if (anti.state === "blocked") toast("Клики на паузе"); return; }
+      if (tapLog.length < MAX_TAP_LOG) {
+        if (tapBase === null) tapBase = e.timeStamp;
+        const t0 = downAt.get(e.pointerId);
+        tapLog.push([Math.round(e.timeStamp - tapBase), Math.round(e.clientX), Math.round(e.clientY),
+                     Math.round(t0 === undefined ? 0 : e.timeStamp - t0),
+                     e.pointerType === "touch" ? 1 : e.pointerType === "pen" ? 2 : 0]);
+      }
       spores += clickPower;
       xp += 1;
       pending++;
@@ -1013,6 +1197,7 @@
     }
 
     scene.addEventListener("pointerdown", (e) => {
+      downAt.set(e.pointerId, e.timeStamp);
       if (!e.isPrimary) return;
       held = false;
       clearTimeout(holdTimer);
@@ -1043,6 +1228,7 @@
       }
     });
     scene.addEventListener("pointerup", (e) => {
+      setTimeout(() => downAt.delete(e.pointerId), 0);
       clearTimeout(holdTimer);
       const moved = scenePointer && scenePointer.id === e.pointerId && scenePointer.moved;
       scenePointer = null;

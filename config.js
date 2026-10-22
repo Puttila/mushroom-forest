@@ -1,1 +1,1 @@
-const API = "https://itself-receptors-predict-dramatic.trycloudflare.com";
+const API = "https://progress-rapid-dir-preliminary.trycloudflare.com";
