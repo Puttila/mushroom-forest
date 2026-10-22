@@ -109,7 +109,12 @@
     #sellGo { width: 100%; border: 0; border-radius: 12px; padding: 11px; background: #b8452f; color: #fff;
               font-size: 15px; font-weight: bold; }
     #sellGo:disabled { background: #3a3a3a; color: #aaa; }
-    #sheet.selling #tabs { display: none; }
+    #sheet.selling #tabs, #sheet.selling #sortRow { display: none; }
+    #sortRow { display: flex; align-items: center; gap: 6px; padding: 0 0 8px; flex: none; font-size: 12px; opacity: .95; }
+    #sortRow span { opacity: .65; }
+    #sortRow button { border: 0; border-radius: 8px; padding: 5px 10px; background: #2a4533; color: #e8f5e0; font-size: 12.5px; }
+    #sortRow button.on { background: #3d8a4f; font-weight: bold; }
+    .cell.drop-target { outline: 2px solid #ffe27a; background: #24402c; }
     #tabs { display: flex; gap: 6px; padding: 4px 0 8px; overflow-x: auto; flex: none; }
     #tabs button { border: 0; border-radius: 8px; padding: 6px 12px; background: #2a4533;
                    color: #e8f5e0; font-size: 13px; white-space: nowrap; }
@@ -286,6 +291,7 @@
       <button id="sellGo" disabled>Выбери редкости</button>
     </div>
     <div id="tabs"></div>
+    <div id="sortRow"><span>Сортировка:</span><button data-by="rarity"></button><button data-by="price"></button></div>
     <div id="grid"></div>
   </div>
 
@@ -370,7 +376,7 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => $("toast").classList.remove("show"), 1800);
     }
-    const sellIcon = () => (state && state.sell_currency === "spores" ? "🌱" : "✨");
+    const saleText = (sp, du) => (fmt(sp) + " 🌱") + (du ? " + " + fmt(du) + " ✨" : "");
     const nextLocked = () => (state ? state.slots.findIndex((s) => !s.unlocked) : -1);
 
     // иконка гриба: твоя текстура, а если файла нет, то эмодзи (и больше этот файл не запрашиваем)
@@ -614,6 +620,7 @@
       if (curTab >= inv.tabs) curTab = 0;
       $("invCount").textContent = inv.items.length + "/" + inv.capacity;
       if (sellMode) renderSell();
+      renderSort();
       $("sheetHint").textContent = targetSlot != null ? "Выбери гриб для слота №" + (targetSlot + 1) : "";
 
       const tabs = $("tabs");
@@ -635,11 +642,12 @@
 
       const grid = $("grid");
       grid.innerHTML = "";
-      const part = inv.items.slice(curTab * inv.per_tab, (curTab + 1) * inv.per_tab);
+      const byPos = new Map(inv.items.map((x) => [x.pos, x]));
       for (let i = 0; i < inv.per_tab; i++) {
         const cell = document.createElement("div");
         cell.className = "cell";
-        const it = part[i];
+        cell.dataset.pos = curTab * inv.per_tab + i;
+        const it = byPos.get(curTab * inv.per_tab + i);
         if (it) {
           cell.dataset.item = it.item;
           if (sellMode && sellPicks(it)) cell.classList.add("picked");
@@ -685,6 +693,13 @@
     }
     $("btnInv").onclick = () => { if (state) openSheet(); };
     $("sheetClose").onclick = closeSheet;
+    function cellAt(x, y) {
+      for (const c of $("grid").children) {
+        const r = c.getBoundingClientRect();
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return c;
+      }
+      return null;
+    }
     $("grid").addEventListener("pointerdown", (e) => {
       const cell = e.target.closest(".cell[data-item]");
       if (!cell || !state || !e.isPrimary) return;
@@ -713,10 +728,12 @@
         dragGhost.style.left = e.clientX + "px";
         dragGhost.style.top = e.clientY + "px";
       }
-      document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
+      document.querySelectorAll(".slot.drop-target, .cell.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
       if (inventoryGesture.dragging) {
         const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".slot.empty");
         if (target && target.classList.contains("empty")) target.classList.add("drop-target");
+        const cell = cellAt(e.clientX, e.clientY);                  // шторка в этот момент прозрачна для касаний, ищем по рамкам
+        if (cell) cell.classList.add("drop-target");
       }
     });
     document.addEventListener("pointerup", (e) => {
@@ -728,9 +745,15 @@
       e.preventDefault();
       e.stopImmediatePropagation();
       const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".slot.empty");
+      const cell = target ? null : cellAt(e.clientX, e.clientY);
       $("sheet").classList.remove("dragging");
-      document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
+      document.querySelectorAll(".slot.drop-target, .cell.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
       if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+      if (cell) {
+        const to = Number(cell.dataset.pos);
+        if (to !== gesture.item.pos) act("/api/inv_move", { item: gesture.item.item, to });
+        return;
+      }
       if (!target) return;
       const slot = Number(target.dataset.index);
       if (state.slots[slot]?.unlocked) {
@@ -747,16 +770,34 @@
       document.querySelectorAll(".slot.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
     });
 
+    // ---------- сортировка инвентаря ----------
+    let sortBy = "rarity", sortDesc = true;
+    function renderSort() {
+      document.querySelectorAll("#sortRow button").forEach((b) => {
+        const on = b.dataset.by === sortBy;
+        b.className = on ? "on" : "";
+        b.textContent = (b.dataset.by === "rarity" ? "Редкость" : "Цена") + (on ? (sortDesc ? " ↓" : " ↑") : "");
+      });
+    }
+    $("sortRow").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-by]");
+      if (!b) return;
+      if (sortBy === b.dataset.by) sortDesc = !sortDesc; else { sortBy = b.dataset.by; sortDesc = true; }
+      renderSort();
+      act("/api/inv_sort", { by: sortBy, desc: sortDesc });
+    });
+
     // ---------- «Продать все»: выбор редкостей ----------
     let sellMode = false, sellSel = new Set(), keepGlossy = true;
     const sellPicks = (it) => sellSel.has(it.rarity) && !(keepGlossy && it.glossy);
     function sellList() {                       // что сейчас будет продано
       const list = state.inventory.items.filter(sellPicks);
       if (list.length && list.length >= state.inventory.items.length + state.slots.filter((x) => x.mushroom).length) {
-        list.sort((a, b) => b.sale_dust - a.sale_dust).shift();      // один гриб остаётся
+        list.sort((a, b) => (b.sale_spores + b.sale_dust * 100) - (a.sale_spores + a.sale_dust * 100)).shift();      // один гриб остаётся
       }
       return list;
     }
+    const totalText = (list) => saleText(list.reduce((a, it) => a + it.sale_spores, 0), list.reduce((a, it) => a + it.sale_dust, 0));
     function renderSell() {
       $("sheet").classList.toggle("selling", sellMode);
       $("sellPanel").hidden = !sellMode;
@@ -785,9 +826,8 @@
         }));
       chip("✨ Глянцевые остаются", "#ffe27a", keepGlossy, () => { keepGlossy = !keepGlossy; renderSell(); renderInv(); });
       const list = sellList();
-      const total = list.reduce((sum, it) => sum + it.sale_dust, 0);
       $("sellGo").disabled = !list.length;
-      $("sellGo").textContent = list.length ? "Продать " + list.length + " шт. за " + fmt(total) + " " + sellIcon()
+      $("sellGo").textContent = list.length ? "Продать " + list.length + " шт. за " + totalText(list)
                                             : (sellSel.size ? "Нечего продавать" : "Выбери редкости");
     }
     function toggleSell(on) {
@@ -798,10 +838,9 @@
     $("sellGo").onclick = () => {
       const list = sellList();
       if (!list.length) return;
-      const total = list.reduce((sum, it) => sum + it.sale_dust, 0);
       const risky = list.some((it) => it.rank >= 3);
       showCard(`<div class="big">Продать ${list.length} шт.?</div>
-        <div style="margin-top:6px">Выручка: <b>${fmt(total)} ${sellIcon()}</b></div>
+        <div style="margin-top:6px">Выручка: <b>${totalText(list)}</b></div>
         ${risky ? '<div class="bad" style="margin-top:6px">Среди них есть редкие и выше!</div>' : ""}
         <div class="btns"><button class="sell" data-act="sellbulk">Продать</button>
           <button class="ghost" data-act="close">Отмена</button></div>`);
@@ -872,7 +911,7 @@
         <div class="${state.level < it.level ? "bad" : "muted"}">🎓 Нужен уровень: ${it.level}</div>
         <div class="btns">
           ${place}
-          <button class="sell" data-act="sell" data-item="${it.item}">Продать за ${fmt(it.sale_dust)} ${sellIcon()}</button>
+          <button class="sell" data-act="sell" data-item="${it.item}">Продать за ${saleText(it.sale_spores, it.sale_dust)}</button>
           <button class="ghost" data-act="close">Закрыть</button>
         </div>`);
     }
@@ -881,7 +920,7 @@
     function showPlaced(i) {
       const m = state.slots[i].mushroom;
       showCard(`${mushHead(m)}${stats(m)}
-        <div class="muted">💰 Продажа: ${fmt(m.sale_dust)} ${sellIcon()} (сначала убери в инвентарь)</div>
+        <div class="muted">💰 Продажа: ${saleText(m.sale_spores, m.sale_dust)} (сначала убери в инвентарь)</div>
         <div class="btns">
           <button data-act="unplace" data-slot="${i}">Убрать в инвентарь</button>
           <button class="ghost" data-act="close">Закрыть</button>
