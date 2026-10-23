@@ -49,6 +49,10 @@
     .slot.locked.next .lock { opacity: 1; }
     .slot.empty.target { animation: pulse 1s infinite; }
     @keyframes pulse { 50% { transform: translate(-50%, -86%) scale(1.12); } }
+    .slot.locked.wild .lock.tint { filter: sepia(1) saturate(5) hue-rotate(-18deg) brightness(.95); }   /* рыжий замок, если нет своей картинки */
+    .slot.locked.wild .mound { filter: grayscale(.3) brightness(.6) sepia(.5) hue-rotate(-20deg); }
+    .slot.wild.empty { pointer-events: none; }
+    .slot.boost .ico { filter: drop-shadow(0 0 6px #9be7ff); }
     .slot.bump { animation: bump .15s; }
     @keyframes bump { 50% { transform: translate(-50%, -86%) scale(.9); } }
     .cost { position: absolute; top: 134%; left: 50%; transform: translateX(-50%); font-size: 11px;
@@ -129,6 +133,7 @@
     .cell .ico img { position: absolute; inset: 0; }
     .cell .lv { position: absolute; right: -2px; bottom: -2px; background: #8a2f2f; color: #fff;
                 font-size: 10px; border-radius: 6px; padding: 0 4px; }
+    .cell.sel { outline: 2px solid #ffe27a; background: #2f4a37; }
     #sheet.selling .cell[data-item] { opacity: .35; }
     #sheet.selling .cell.picked { opacity: 1; outline: 2px solid #ff7a5c; }
 
@@ -377,7 +382,8 @@
       toastTimer = setTimeout(() => $("toast").classList.remove("show"), 1800);
     }
     const saleText = (sp, du) => (fmt(sp) + " 🌱") + (du ? " + " + fmt(du) + " ✨" : "");
-    const nextLocked = () => (state ? state.slots.findIndex((s) => !s.unlocked) : -1);
+    const nextLocked = () => (state ? state.slots.findIndex((s) => !s.unlocked && !s.wild) : -1);
+    const pct = (v) => "+" + Math.round(v * 100) + "%";
 
     // иконка гриба: твоя текстура, а если файла нет, то эмодзи (и больше этот файл не запрашиваем)
     const missingSprites = new Set();
@@ -535,7 +541,9 @@
     function render() {
       $("spores").textContent = "🌱 " + fmt(spores);
       $("dust").textContent = "✨ " + fmt(dust);
-      $("income").textContent = "+" + passive.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " спор/сек";
+      $("income").textContent = "+" + passive.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " спор/сек" +
+        (state && (state.click_mult > 1 || state.passive_mult > 1)
+          ? " · 🔮 ×" + num(state.click_mult) + (state.passive_mult !== state.click_mult ? "/×" + num(state.passive_mult) : "") : "");
       if (!state) return;
       const lo = state.xp_floor, hi = state.xp_ceil;
       const frac = Math.min(1, Math.max(0, (xp - lo) / (hi - lo)));
@@ -586,9 +594,10 @@
           el.classList.add("locked");
           const lock = new Image();
           lock.className = "lock";
-          lock.src = "assets/icon_lock.webp";
+          lock.src = s.wild ? "assets/icon_lock_wild.webp" : "assets/icon_lock.webp";   // для диких можно нарисовать свой рыжий замок
           lock.draggable = false;
-          lock.onerror = () => { const t = document.createElement("div"); t.className = "lock"; t.textContent = "🔒"; lock.replaceWith(t); };
+          if (s.wild) { el.classList.add("wild"); lock.onerror = () => { lock.onerror = null; lock.classList.add("tint"); lock.src = "assets/icon_lock.webp"; }; }
+          else lock.onerror = () => { const t = document.createElement("div"); t.className = "lock"; t.textContent = "🔒"; lock.replaceWith(t); };
           el.appendChild(lock);
           if (i === next && s.cost) {
             el.classList.add("next");
@@ -600,6 +609,7 @@
           }
         } else if (!s.mushroom) {
           el.classList.add("empty");
+          if (s.wild) el.classList.add("wild");
           if (i === targetSlot) el.classList.add("target");
           const plus = document.createElement("div");
           plus.className = "plus";
@@ -607,6 +617,8 @@
           el.appendChild(plus);
         } else {
           el.classList.add("filled");
+          if (s.wild) el.classList.add("wild");
+          if (s.mushroom.kind === "boost") el.classList.add("boost");
           el.appendChild(icon(s.mushroom));
         }
         scene.appendChild(el);
@@ -651,6 +663,7 @@
         if (it) {
           cell.dataset.item = it.item;
           if (sellMode && sellPicks(it)) cell.classList.add("picked");
+          if (pickedItem === it.item) cell.classList.add("sel");
           cell.style.borderColor = it.color;
           cell.appendChild(icon(it));
           if (it.level > state.level) {
@@ -664,8 +677,10 @@
       }
     }
 
+    let stateAt = Date.now();
     function applyState(s) {
       state = s;
+      stateAt = Date.now();
       clickPower = s.click_power;
       passive = s.passive;
       dust = s.dust;
@@ -687,12 +702,31 @@
       renderSlots();
     }
     function closeSheet() {
+      pickedItem = null;
       if (sellMode) toggleSell(false);
       $("sheet").classList.remove("open");
       if (targetSlot != null) { targetSlot = null; if (state) refreshSlots(); }
     }
     $("btnInv").onclick = () => { if (state) openSheet(); };
     $("sheetClose").onclick = closeSheet;
+    // Запасной способ без перетаскивания: тап по грибу выбирает его, тап по другой ячейке переносит (или меняет местами)
+    let pickedItem = null;
+    function tapCell(pos, item) {
+      if (sellMode || !state) return;
+      if (pickedItem === null) {
+        if (item) { pickedItem = item.item; renderInv(); toast("Теперь тапни по ячейке, куда поставить"); }
+        return;
+      }
+      const id = pickedItem;
+      pickedItem = null;
+      const cur = state.inventory.items.find((x) => x.item === id);
+      if (cur && cur.pos !== pos) act("/api/inv_move", { item: id, to: pos }); else renderInv();
+    }
+    $("grid").addEventListener("click", (e) => {
+      const cell = e.target.closest(".cell");
+      if (cell && !cell.dataset.item) tapCell(Number(cell.dataset.pos), null);
+    });
+    document.addEventListener("touchmove", (e) => { if (inventoryGesture && inventoryGesture.dragging) e.preventDefault(); }, { passive: false });
     function cellAt(x, y) {
       for (const c of $("grid").children) {
         const r = c.getBoundingClientRect();
@@ -710,7 +744,7 @@
       };
       cell.setPointerCapture(e.pointerId);
       inventoryGesture.holdTimer = setTimeout(() => {
-        if (inventoryGesture && !inventoryGesture.dragging) showItem(item);
+        if (inventoryGesture && !inventoryGesture.dragging) { inventoryGesture.held = true; pickedItem = null; showItem(item); }
       }, 600);
     });
     document.addEventListener("pointermove", (e) => {
@@ -741,7 +775,11 @@
       const gesture = inventoryGesture;
       inventoryGesture = null;
       clearTimeout(gesture.holdTimer);
-      if (!gesture.dragging) return;
+      if (!gesture.dragging) {
+        if (!gesture.held && e.target.closest && e.target.closest("#grid")) tapCell(gesture.item.pos, gesture.item);
+        return;
+      }
+      pickedItem = null;
       e.preventDefault();
       e.stopImmediatePropagation();
       const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".slot.empty");
@@ -886,9 +924,17 @@
     });
 
     function stats(m) {
+      if (m.kind === "boost") {
+        return `<div>🔮 Усилитель: сам не кликает, а множит остальных</div>` +
+          (m.boost_click ? `<div>👆 ${pct(m.boost_click)} к силе клика</div>` : "") +
+          (m.boost_passive ? `<div>⏳ ${pct(m.boost_passive)} к пассивному доходу</div>` : "");
+      }
       return `<div>👆 ${fmt(m.click)} спор за клик</div>
               <div>⏳ ${num(m.passive)} спор/сек</div>`;
     }
+    const shortStats = (m) => m.kind === "boost"
+      ? "🔮 " + [m.boost_click ? "клик " + pct(m.boost_click) : "", m.boost_passive ? "доход " + pct(m.boost_passive) : ""].filter(Boolean).join(", ")
+      : "👆 " + fmt(m.click) + " · ⏳ " + num(m.passive) + "/с";
     function mushHead(m) {
       return `<div class="head">${iconHtml(m)}<div>
                 <div class="big">${m.name}${m.glossy ? " ✨" : ""}</div>
@@ -919,6 +965,13 @@
     // гриб на поляне (удержание)
     function showPlaced(i) {
       const m = state.slots[i].mushroom;
+      if (state.slots[i].wild) {
+        const w = (state.wild || []).find((x) => x.slot === i);
+        showCard(`${mushHead(m)}${stats(m)}
+          <div class="muted">🌿 Дикий гриб: уйдёт сам${w ? " через " + fmtTime(Math.max(0, w.ends_in - (Date.now() - stateAt) / 1000)) : ""}</div>
+          <div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`);
+        return;
+      }
       showCard(`${mushHead(m)}${stats(m)}
         <div class="muted">💰 Продажа: ${saleText(m.sale_spores, m.sale_dust)} (сначала убери в инвентарь)</div>
         <div class="btns">
@@ -1000,7 +1053,7 @@
         <div class="dmain" data-open="deal">${iconHtml(m)}<div style="min-width:0">
           <div class="dname">${m.name}${m.glossy ? " ✨" : ""}</div>
           <div style="color:${m.color};font-size:13px">${m.rarity_name}</div>
-          <div class="st">👆 ${fmt(m.click)} · ⏳ ${num(m.passive)}/с · 🎓 ур. ${m.level}</div></div></div>
+          <div class="st">${shortStats(m)} · 🎓 ур. ${m.level}</div></div></div>
         <div class="dbuy"><div><s>${fmt(d.full_price)}</s><span class="newp">${fmt(d.price)} 🌱</span></div>
           <button class="buy" id="dealBtn"></button></div>`;
       refreshBuyStates();
@@ -1048,7 +1101,7 @@
           <div class="info">
             <div class="nm">${l.name}</div>
             <div class="rr"><span style="color:${l.color}">${l.rarity_name}</span> · в наличии: ${l.qty}</div>
-            <div class="st">👆 ${fmt(l.click)} · ⏳ ${num(l.passive)}/с</div>
+            <div class="st">${shortStats(l)}</div>
           </div>
           <button class="buy"></button>
         </div>`).join("");
@@ -1216,7 +1269,7 @@
       render();
 
       slotEls.forEach((el) => {
-        if (el.classList.contains("filled")) {
+        if (el.classList.contains("filled") && !el.classList.contains("boost")) {   // усилители просто стоят
           el.classList.remove("bump");
           void el.offsetWidth;
           el.classList.add("bump");
@@ -1243,7 +1296,7 @@
       const slotEl = e.target.closest(".slot");
       scenePointer = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
       if (slotEl && (slotEl.classList.contains("filled") || slotEl.classList.contains("empty") ||
-          (slotEl.classList.contains("locked") && slotEl.dataset.index == nextLocked()))) {
+          (slotEl.classList.contains("locked") && (slotEl.dataset.index == nextLocked() || slotEl.classList.contains("wild"))))) {
         slotEl.setPointerCapture(e.pointerId);
         holdTimer = setTimeout(() => {
           held = true;
@@ -1253,6 +1306,8 @@
             targetSlot = i;
             refreshSlots();
             openSheet();
+          } else if (state.slots[i].wild) {
+            toast("🔒 Дикая ячейка откроется в улучшениях");
           } else if (i === nextLocked() && state.slots[i].cost) {
             openUnlock(i);
           }
@@ -1295,7 +1350,7 @@
       if (shopOpen && shopData) shopTick();                                // таймеры и кнопки магазина
     }, 1000);
 
-    // пассивный доход: раз в секунду грибы чуть вздрагивают, над ними бледное "+N" (почти незаметно).
+    // пассивный доход: раз в секунду грибы чуть вздрагивают, над ними бледное "+N" (почти незаметно)
     const calm = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
     function passiveTick() {
       if (!state || document.hidden || calm || shopOpen) return;
@@ -1325,7 +1380,9 @@
     let idleTicks = 0;
     setInterval(() => {                                                    // связь с сервером
       idleTicks++;
-      if (!document.hidden && !busy && (pending > 0 || idleTicks >= 10)) { idleTicks = 0; sync(); }
+      const wildDue = state && (state.wild || []).some((w) => w.ends_in - (Date.now() - stateAt) / 1000 <= 0);
+      const wildWait = state && state.slots.some((x) => x.wild && x.unlocked && !x.mushroom) && idleTicks >= 4;
+      if (!document.hidden && !busy && (pending > 0 || idleTicks >= 10 || wildDue || wildWait)) { idleTicks = 0; sync(); }
     }, 1000);
 
     layout();
