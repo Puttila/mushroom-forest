@@ -141,6 +141,39 @@
     #sheet.selling .cell[data-item] { opacity: .35; }
     #sheet.selling .cell.picked { opacity: 1; outline: 2px solid #ff7a5c; }
 
+    /* ---------- древо улучшений ---------- */
+    #upPage { position: fixed; inset: 0; z-index: 15; display: flex; flex-direction: column; background: #14211a;
+              transform: translateX(100%); visibility: hidden; transition: transform .32s ease, visibility 0s .32s; }
+    #upPage.open { transform: none; visibility: visible; transition: transform .32s ease, visibility 0s; }
+    #upBar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: linear-gradient(#5a1c1c, #3b1111);
+             border-bottom: 2px solid #8a2f2f; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
+    #upBack { border: 1px solid #c9a23a; border-radius: 10px; padding: 8px 14px; background: #2a1010; color: #ffe27a;
+              font-size: 15px; font-weight: bold; }
+    #upBar b { flex: 1; text-align: center; font-size: 17px; color: #ffd76a; letter-spacing: .06em; text-transform: uppercase; }
+    #upCur { white-space: pre; font-size: 13px; text-align: right; line-height: 1.35; min-width: 74px; }
+    #upScroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y;
+                background: radial-gradient(circle at 50% 50%, #1b2c22, #101a14 70%); }
+    #upCanvas { position: relative; }
+    #upLines { position: absolute; inset: 0; pointer-events: none; }
+    #upLines line { stroke: #6b5a2a; stroke-width: 3; }
+    .unode { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; box-sizing: border-box; padding: 0;
+             border: 3px solid var(--c, #c9a23a); border-radius: 8px; background: #14211a center / cover no-repeat;
+             font-size: 30px; line-height: 1; color: #fff; overflow: hidden;
+             box-shadow: 0 0 0 2px rgba(0,0,0,.6), inset 0 0 10px rgba(0,0,0,.6); }
+    .unode img.uic { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); object-fit: contain; pointer-events: none; }
+    .unode .shade { position: absolute; inset: 0; background: rgba(5,10,7,.62); display: grid; place-items: center; }
+    .unode .shade img { width: 52%; opacity: .6; }
+    .unode.can .shade { background: rgba(5,10,7,.3); }
+    .unode.can { animation: upPulse 1.4s ease-in-out infinite; }
+    .unode.owned { box-shadow: 0 0 12px var(--c, #c9a23a), 0 0 0 2px rgba(0,0,0,.6); }
+    .unode.owned .shade { display: none; }
+    .unode.fresh { animation: upIn .45s ease-out; }
+    @keyframes upPulse { 50% { box-shadow: 0 0 14px 3px var(--c, #ffe27a), 0 0 0 2px rgba(0,0,0,.6); } }
+    @keyframes upIn { from { transform: scale(.2); opacity: 0; } }
+    .uprice { position: absolute; transform: translate(-50%, 0); margin-top: 36px; font-size: 11px; white-space: nowrap;
+              background: rgba(0,0,0,.6); border-radius: 6px; padding: 1px 6px; pointer-events: none; }
+    .uprice.poor { color: #ff9d9d; }
+
     /* ---------- проверка «ты не робот?» ---------- */
     #antiBar { font-size: 13px; color: #ffb4b4; padding-top: 4px; }
     #antiBar:empty { display: none; }
@@ -302,6 +335,11 @@
     <div id="tabs"></div>
     <div id="sortRow"><span>Сортировка:</span><button data-by="rarity"></button><button data-by="price"></button></div>
     <div id="grid"></div>
+  </div>
+
+  <div id="upPage">
+    <div id="upBar"><button id="upBack">← Назад</button><b>Улучшения</b><div id="upCur"></div></div>
+    <div id="upScroll"><div id="upCanvas"><svg id="upLines"></svg></div></div>
   </div>
 
   <div id="shop">
@@ -581,7 +619,8 @@
       try {
         const res = await api(path, body);
         applyState(res);
-        if (res.shop) setShop(res.shop);               // покупка/обновление вернули свежий магазин
+        if (res.shop) setShop(res.shop);
+        if (res.upgrades) setUpgrades(res.upgrades);               // покупка/обновление вернули свежий магазин
         closeCard();
         if (okText) toast(okText);
         try { tg.HapticFeedback.notificationOccurred("success"); } catch (_) {}
@@ -597,6 +636,7 @@
     function render() {
       setText($("spores"), "🌱 " + fmt(spores));
       setText($("dust"), "✨ " + fmt(dust));
+      setText($("upCur"), "🌱 " + fmt(spores) + "\n✨ " + fmt(dust));
       $("income").textContent = "+" + passive.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " спор/сек" +
         (state && (state.click_mult > 1 || state.passive_mult > 1)
           ? " · 🔮 ×" + num(state.click_mult) + (state.passive_mult !== state.click_mult ? "/×" + num(state.passive_mult) : "") : "");
@@ -963,6 +1003,7 @@
         case "lotbuy": { const l = shopData && shopData.lots.find((x) => x.id === d.id); if (l) buyLot(l); break; }
         case "refresh": act("/api/auction/refresh", {}, "Аукцион обновлён 🔄"); break;
         case "unplace": act("/api/unplace", { slot: Number(d.slot) }, "Гриб убран в инвентарь"); break;
+        case "upbuy": act("/api/upgrade/buy", { id: d.id }, "Улучшение изучено!"); break;
         case "sellbulk": {
           const rarities = [...sellSel];
           act("/api/sell_bulk", { rarities, keep_glossy: keepGlossy }).then((ok) => {
@@ -1269,10 +1310,87 @@
     };
     $("btnMut").onclick = () => alertMsg("Мутации скоро!");
     $("btnPack").onclick = () => alertMsg("Паки скоро!");
-    $("btnUpgrades").onclick = () => showCard(`
-      <div class="big">⬆️ Улучшения</div>
-      <div class="muted" style="margin-top:8px">Ветка улучшений скоро появится. Здесь будут улучшения параметров игры.</div>
-      <div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`);
+
+
+    // ---------- древо улучшений ----------
+    const UP_STEP = 100, UP_PAD = 160;
+    const BRANCH = { root: "#ffe27a", earn: "#e8c030", xp: "#3a9fe8", other: "#a06be8", mush: "#47c05a" };
+    let upData = null, upSeen = new Set();
+    const upOwned = () => new Set(upData ? upData.owned : []);
+    function setUpgrades(d) { upData = d; if ($("upPage").classList.contains("open")) renderUpgrades(); }
+    async function openUpgrades() {
+      closeSheet(); closeShop();
+      $("upPage").classList.add("open");
+      try { setUpgrades(await api("/api/upgrades")); centerUpgrades(); } catch (e) { toast("❌ " + e.message); }
+    }
+    function centerUpgrades() {
+      const sc = $("upScroll"), c = upCenter();
+      sc.scrollLeft = c.x - sc.clientWidth / 2; sc.scrollTop = c.y - sc.clientHeight / 2;
+    }
+    function upCenter() {
+      const xs = upData.nodes.map((n) => n.x), ys = upData.nodes.map((n) => n.y);
+      return { x: UP_PAD - Math.min(...xs) * UP_STEP, y: UP_PAD - Math.min(...ys) * UP_STEP,
+               w: (Math.max(...xs) - Math.min(...xs)) * UP_STEP + UP_PAD * 2, h: (Math.max(...ys) - Math.min(...ys)) * UP_STEP + UP_PAD * 2 };
+    }
+    function renderUpgrades() {
+      if (!upData || !state) return;
+      const cv = $("upCanvas"), c = upCenter(), owned = upOwned();
+      cv.querySelectorAll(".unode, .uprice").forEach((e) => e.remove());
+      cv.style.width = Math.max(c.w, innerWidth) + "px"; cv.style.height = Math.max(c.h, innerHeight - 70) + "px";
+      const svg = $("upLines"); svg.setAttribute("width", cv.style.width.replace("px", "")); svg.setAttribute("height", cv.style.height.replace("px", ""));
+      svg.innerHTML = "";
+      const byId = new Map(upData.nodes.map((n) => [n.id, n]));
+      const pos = (n) => [c.x + n.x * UP_STEP, c.y + n.y * UP_STEP];
+      upData.nodes.forEach((n) => {
+        const isOwned = owned.has(n.id), shown = isOwned || !n.parent || owned.has(n.parent);
+        if (!shown) return;                                           // скрыто, пока не куплено предыдущее
+        const [px, py] = pos(n), par = n.parent && byId.get(n.parent);
+        if (par) {
+          const [qx, qy] = pos(par), ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          ln.setAttribute("x1", qx); ln.setAttribute("y1", qy); ln.setAttribute("x2", px); ln.setAttribute("y2", py);
+          svg.appendChild(ln);
+        }
+        const can = !isOwned && n.ready && state.level >= n.level;
+        const b = document.createElement("button");
+        b.className = "unode" + (isOwned ? " owned" : can ? " can" : "") + (upSeen.has(n.id) ? "" : " fresh");
+        b.style.left = px + "px"; b.style.top = py + "px"; b.style.setProperty("--c", BRANCH[n.branch] || "#c9a23a");
+        const ic = new Image(); ic.className = "uic"; ic.draggable = false; ic.src = "assets/" + n.icon;
+        ic.onerror = () => { ic.replaceWith(document.createTextNode(n.emoji)); };
+        b.appendChild(ic);
+        if (!isOwned) {
+          const sh = document.createElement("div"); sh.className = "shade";
+          const lk = new Image(); lk.src = "assets/icon_lock_up.png"; lk.draggable = false;
+          lk.onerror = () => { lk.onerror = () => lk.remove(); lk.src = "assets/icon_lock.webp"; };
+          sh.appendChild(lk); b.appendChild(sh);
+        }
+        b.onclick = () => showUpgrade(n);
+        upSeen.add(n.id);
+        cv.appendChild(b);
+        if (!isOwned) {
+          const pr = document.createElement("div"); pr.className = "uprice" + (spores < n.cost.spores || dust < n.cost.dust ? " poor" : "");
+          pr.style.left = px + "px"; pr.style.top = py + "px"; pr.textContent = costText(n.cost);
+          cv.appendChild(pr);
+        }
+      });
+    }
+    function showUpgrade(n) {
+      const owned = upOwned(), isOwned = owned.has(n.id), par = upData.nodes.find((x) => x.id === n.parent);
+      const enough = spores >= n.cost.spores && dust >= n.cost.dust;
+      let btn;
+      if (isOwned) btn = '<button class="dim" data-act="close">Куплено ✔</button>';
+      else if (!n.ready) btn = '<button class="dim" data-act="close">Скоро</button>';
+      else if (state.level < n.level) btn = `<button class="dim" data-act="close">Нужен уровень ${n.level}</button>`;
+      else if (!enough) btn = '<button class="dim" data-act="close">Не хватает</button>';
+      else btn = `<button data-act="upbuy" data-id="${n.id}">Купить</button>`;
+      showCard(`<div class="head"><div class="ico">${n.emoji}</div><div><div class="big">${n.name}</div>
+          <div class="muted">${isOwned ? "Изучено" : "Не изучено"}</div></div></div>
+        <div>${n.desc}</div>
+        ${isOwned ? "" : `<div style="margin-top:8px">Цена: <b>${costText(n.cost)}</b></div>`}
+        ${!isOwned && par && !owned.has(par.id) ? `<div class="bad">Сначала: ${par.name}</div>` : ""}
+        <div class="btns">${btn}<button class="ghost" data-act="close">Закрыть</button></div>`);
+    }
+    $("upBack").onclick = () => $("upPage").classList.remove("open");
+    $("btnUpgrades").onclick = openUpgrades;
 
     // ---------- проверка «ты не робот?» ----------
     let anti = { state: "ok" }, antiAt = 0;
