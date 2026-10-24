@@ -55,6 +55,13 @@
     .slot.boost .ico { filter: drop-shadow(0 0 6px #9be7ff); }
     .slot.bump .ico { animation: bump .15s; transform-origin: 50% 86%; }   /* вздрагивает только гриб, ямка стоит */
     @keyframes bump { 50% { transform: scale(.9); } }
+    #menuBtn { position: absolute; left: 8px; top: 8px; z-index: 20; width: 34px; height: 26px; padding: 0; border-radius: 9px;
+               border: 1px solid #c9a23a; background: rgba(14,23,18,.85); color: #ffe27a; font-size: 14px; }
+    #menuBtn.open span { display: inline-block; transform: rotate(180deg); }
+    #menuPanel { position: absolute; left: 8px; top: 40px; z-index: 20; display: none; flex-direction: column; gap: 6px; padding: 8px;
+                 border-radius: 12px; background: rgba(14,23,18,.94); border: 1px solid #c9a23a; box-shadow: 0 6px 18px rgba(0,0,0,.6); }
+    #menuPanel.open { display: flex; }
+    #menuPanel button { padding: 9px 14px; border-radius: 9px; border: 1px solid #4b6b50; background: #1d3325; color: #fff; font-size: 14px; text-align: left; }
     .cost { position: absolute; top: 134%; left: 50%; transform: translateX(-50%); font-size: 11px;
             white-space: nowrap; color: #ffb4b4; background: rgba(0,0,0,.55); border-radius: 6px; padding: 1px 6px; }
     .cost.ok { color: #9dff9d; }
@@ -100,6 +107,7 @@
              box-shadow: 0 -6px 24px rgba(0,0,0,.5); z-index: 10; box-sizing: border-box; }
     #sheet.open { transform: translate(-50%, 0); visibility: visible; transition: transform .25s ease, visibility 0s; }
     #sheet.dragging { pointer-events: none; }
+    #sheet.dragging.away { transform: translate(-50%, 105%); visibility: hidden; transition: transform .25s ease, visibility 0s .25s; }
     #sheetHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 4px 6px; flex: none; }
     #sheetHead b { font-size: 16px; }
     #invCount { opacity: .7; font-size: 13px; margin-left: 8px; }
@@ -315,7 +323,7 @@
       <div id="antiBar"></div>
     </div>
 
-    <div id="stage"><div id="scene"><img id="meadow" src="assets/meadow.webp" alt="" draggable="false"></div></div>
+    <div id="stage"><button id="menuBtn"><span>▾</span></button><div id="menuPanel"><button data-m="settings">⚙️ Настройки</button><button data-m="news">📰 Новости</button><button data-m="about">👤 Об авторе</button></div><div id="scene"><img id="meadow" src="assets/meadow.webp" alt="" draggable="false"></div></div>
 
     <div id="nav">
       <button id="btnInv" title="Инвентарь"><span class="ic">🎒</span><span class="lb">Инвентарь</span></button>
@@ -862,6 +870,15 @@
         dragGhost.style.left = e.clientX + "px";
         dragGhost.style.top = e.clientY + "px";
       }
+      if (inventoryGesture.dragging) {                              // вынес гриб за шторку и подержал секунду: шторка уезжает
+        const sr = $("sheet").getBoundingClientRect();
+        const outside = e.clientY < sr.top - 8 || e.clientY > sr.bottom || e.clientX < sr.left || e.clientX > sr.right;
+        if (outside && !inventoryGesture.outTimer && !$("sheet").classList.contains("away")) {
+          inventoryGesture.outTimer = setTimeout(() => $("sheet").classList.add("away"), 1000);
+        } else if (!outside && inventoryGesture.outTimer) {
+          clearTimeout(inventoryGesture.outTimer); inventoryGesture.outTimer = null;
+        }
+      }
       document.querySelectorAll(".slot.drop-target, .cell.drop-target").forEach((slot) => slot.classList.remove("drop-target"));
       if (inventoryGesture.dragging) {
         const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".slot.empty");
@@ -874,7 +891,8 @@
       if (!inventoryGesture || inventoryGesture.pointerId !== e.pointerId) return;
       const gesture = inventoryGesture;
       inventoryGesture = null;
-      clearTimeout(gesture.holdTimer);
+      clearTimeout(gesture.holdTimer); clearTimeout(gesture.outTimer);
+      $("sheet").classList.remove("away");
       if (!gesture.dragging) {
         if (!gesture.held && e.target.closest && e.target.closest("#grid")) tapCell(gesture.item.pos, gesture.item);
         return;
@@ -901,7 +919,8 @@
       }
     }, true);
     document.addEventListener("pointercancel", () => {
-      if (inventoryGesture) clearTimeout(inventoryGesture.holdTimer);
+      if (inventoryGesture) { clearTimeout(inventoryGesture.holdTimer); clearTimeout(inventoryGesture.outTimer); }
+      $("sheet").classList.remove("away");
       inventoryGesture = null;
       $("sheet").classList.remove("dragging");
       if (dragGhost) { dragGhost.remove(); dragGhost = null; }
@@ -1477,26 +1496,30 @@
 
     // ---------- клики по поляне ----------
     const downAt = new Map();                          // когда палец/кнопка опустились (для длительности нажатия)
+    let renderQueued = false;
+    const tapEntry = new Map();
     function doClick(e) {                             // клик по поляне = клик сразу по всем грибам
       if (!e.isTrusted || !state || clickPower === 0) return;   // событие, сделанное скриптом, не считаем
       if (clicksPaused()) { if (anti.state === "blocked") toast("Клики на паузе"); return; }
       if (tapLog.length < MAX_TAP_LOG) {
         if (tapBase === null) tapBase = e.timeStamp;
         const t0 = downAt.get(e.pointerId);
-        tapLog.push([Math.round(e.timeStamp - tapBase), Math.round(e.clientX), Math.round(e.clientY),
-                     Math.round(t0 === undefined ? 0 : e.timeStamp - t0),
-                     e.pointerType === "touch" ? 1 : e.pointerType === "pen" ? 2 : 0]);
+        const entry = [Math.round(e.timeStamp - tapBase), Math.round(e.clientX), Math.round(e.clientY),
+                       Math.round(t0 === undefined ? 0 : e.timeStamp - t0),
+                       e.pointerType === "touch" ? 1 : e.pointerType === "pen" ? 2 : 0];
+        tapLog.push(entry);
+        tapEntry.set(e.pointerId, [entry, e.timeStamp]);        // длительность нажатия допишем, когда палец поднимется
       }
       spores += clickPower;
       xp += 1;
       pending++;
-      render();
+      if (!renderQueued) { renderQueued = true; requestAnimationFrame(() => { renderQueued = false; render(); }); }
 
       slotEls.forEach((el) => {
         if (el.classList.contains("filled") && !el.classList.contains("boost")) {   // усилители просто стоят
-          el.classList.remove("bump");
-          void el.offsetWidth;
-          el.classList.add("bump");
+          const ic = el.querySelector(".ico");
+          if (ic && ic.animate) ic.animate([{ transform: "scale(1)" }, { transform: "scale(.88)" }, { transform: "scale(1)" }],
+                                            { duration: 130, easing: "ease-out" });   // вздрагивает только гриб
           const live = el.querySelector(".ico.anim");
           if (live && live.dataset.cur !== "click") playAnim(live, "click");
         }
@@ -1516,6 +1539,10 @@
 
     stage.addEventListener("pointerdown", (e) => {
       downAt.set(e.pointerId, e.timeStamp);
+      if (state) {                                                  // клик засчитываем сразу при касании, без ожидания отпускания
+        const sl = e.target.closest(".slot");
+        if (!sl || !sl.classList.contains("locked")) doClick(e);
+      }
       if (!e.isPrimary) return;
       held = false;
       clearTimeout(holdTimer);
@@ -1549,23 +1576,34 @@
     });
     stage.addEventListener("pointerup", (e) => {
       setTimeout(() => downAt.delete(e.pointerId), 0);
+      const te = tapEntry.get(e.pointerId);
+      if (te) { te[0][3] = Math.round(e.timeStamp - te[1]); tapEntry.delete(e.pointerId); }
       clearTimeout(holdTimer);
       const moved = scenePointer && scenePointer.id === e.pointerId && scenePointer.moved;
       scenePointer = null;
-      if (!held && !moved && state) {
-        const slotEl = e.target.closest(".slot");
-        const i = slotEl ? Number(slotEl.dataset.index) : -1;
-        if (!slotEl || !slotEl.classList.contains("locked")) {
-          doClick(e);
-        }
-      }
       held = false;
     });
-    stage.addEventListener("pointercancel", () => {
+    stage.addEventListener("pointercancel", (e) => {
+      tapEntry.delete(e.pointerId);
       clearTimeout(holdTimer);
       scenePointer = null;
       held = false;
     });
+    // маленькое меню (стрелочка слева сверху)
+    (function () {
+      const btn = $("menuBtn"), panel = $("menuPanel");
+      ["pointerdown", "pointerup", "pointercancel"].forEach((ev) => { btn.addEventListener(ev, (e) => e.stopPropagation()); panel.addEventListener(ev, (e) => e.stopPropagation()); });
+      const setOpen = (on) => { panel.classList.toggle("open", on); btn.classList.toggle("open", on); };
+      btn.onclick = () => setOpen(!panel.classList.contains("open"));
+      document.addEventListener("pointerdown", (e) => { if (!e.target.closest("#menuBtn, #menuPanel")) setOpen(false); }, true);
+      const TXT = { settings: ["⚙️ Настройки", "Здесь скоро появятся настройки игры."], news: ["📰 Новости", "Пока новостей нет."], about: ["👤 Об авторе", "Игра «Грибной лес» делается с любовью. Скоро здесь будет рассказ об авторе."] };
+      panel.addEventListener("click", (e) => {
+        const b = e.target.closest("button"); if (!b) return;
+        setOpen(false);
+        const [t, d] = TXT[b.dataset.m];
+        showCard(`<div class="big">${t}</div><div style="margin-top:8px">${d}</div><div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`);
+      });
+    })();
     document.addEventListener("contextmenu", (e) => e.preventDefault());
 
     // ---------- таймеры ----------
