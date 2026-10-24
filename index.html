@@ -66,6 +66,10 @@
     /* ---------- иконка гриба (картинка или эмодзи) ---------- */
     .ico { display: flex; align-items: center; justify-content: center; font-size: 28px; line-height: 1; }
     .ico img { width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; pointer-events: none; }
+    .cur { height: 1.05em; width: auto; vertical-align: -.17em; image-rendering: auto; pointer-events: none; }
+    #spores .cur { height: .95em; vertical-align: -.12em; }
+    .ico.anim { background-repeat: no-repeat; background-position: 0 0; }
+    .slot .ico.anim { inset: -26% -26% -6% -26%; }   /* в кадрах анимации по краям свечение, поэтому кадр крупнее ячейки */
     .glossy { filter: drop-shadow(0 0 5px #ffe27a) brightness(1.15); }
 
     /* ---------- нижняя панель: крупные, приподняты от края, выпуклые ---------- */
@@ -385,11 +389,63 @@
     const nextLocked = () => (state ? state.slots.findIndex((s) => !s.unlocked && !s.wild) : -1);
     const pct = (v) => "+" + Math.round(v * 100) + "%";
 
+    // Иконки валют: везде, где в тексте стоит 🌱 или ✨, подставляем твои картинки (assets/icon_spores.png, icon_dust.png).
+    // Если файла нет, остаётся эмодзи. Для обычной звёздочки у глянцевых грибов используется 💎.
+    const CUR = { "🌱": "assets/icon_spores.png", "✨": "assets/icon_dust.png" };
+    const brokenCur = new Set();
+    function curify(root) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) if (/[🌱✨]/u.test(n.nodeValue)) nodes.push(n);
+      nodes.forEach((n) => {
+        if (n.parentNode && /^(SCRIPT|STYLE|TEXTAREA|INPUT)$/.test(n.parentNode.nodeName)) return;
+        const frag = document.createDocumentFragment();
+        n.nodeValue.split(/([🌱✨])/u).forEach((part) => {
+          if (!CUR[part] || brokenCur.has(part)) { if (part) frag.appendChild(document.createTextNode(part)); return; }
+          const img = new Image();
+          img.className = "cur"; img.alt = part; img.src = CUR[part]; img.draggable = false;
+          img.onerror = () => { brokenCur.add(part); img.replaceWith(document.createTextNode(part)); };
+          frag.appendChild(img);
+        });
+        n.parentNode.replaceChild(frag, n);
+      });
+    }
+    new MutationObserver((list) => {
+      for (const m of list) {
+        m.addedNodes.forEach((n) => { if (n.nodeType === 1) curify(n); else if (n.nodeType === 3 && n.parentNode) curify(n.parentNode); });
+        if (m.type === "characterData" && m.target.parentNode) curify(m.target.parentNode);
+      }
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    function setText(el, t) { if (el._t !== t) { el._t = t; el.textContent = t; } }
+
+    // Анимированные грибы: полоса кадров (assets/<id>_idle.png стоит, assets/<id>_click.png при клике).
+    // Формат: [файл, число кадров, длительность цикла в мс]. Чтобы оживить другой гриб, добавь его сюда.
+    const ANIM = {
+      golden_fly_agaric: { idle: ["assets/golden_fly_agaric_idle.png", 6, 1100], click: ["assets/golden_fly_agaric_click.png", 8, 480] },
+    };
+    function playAnim(ico, name) {
+      const a = ANIM[ico.dataset.mid]; if (!a || !ico.animate) return;
+      const [src, n, ms] = a[name];
+      ico.dataset.cur = name;
+      ico.style.backgroundImage = `url(${src})`;
+      ico.style.backgroundSize = n * 100 + "% 100%";
+      if (ico._an) ico._an.cancel();
+      ico._an = ico.animate([{ backgroundPosition: "0% 0%" }, { backgroundPosition: "100% 0%" }],
+        { duration: ms, iterations: name === "idle" ? Infinity : 1, easing: `steps(${n}, jump-none)` });
+      if (name === "click") ico._an.onfinish = () => playAnim(ico, "idle");
+    }
+
     // иконка гриба: твоя текстура, а если файла нет, то эмодзи (и больше этот файл не запрашиваем)
     const missingSprites = new Set();
     function spriteMissing(img, sprite, emoji) { missingSprites.add(sprite); img.parentNode.textContent = emoji; }
-    function icon(m) {
+    function icon(m, live) {
       const wrap = document.createElement("div");
+      if (live && ANIM[m.id] && wrap.animate) {              // гриб на поляне: живая анимация
+        wrap.className = "ico anim" + (m.glossy ? " glossy" : "");
+        wrap.dataset.mid = m.id;
+        playAnim(wrap, "idle");
+        return wrap;
+      }
       wrap.className = "ico" + (m.glossy ? " glossy" : "");
       if (missingSprites.has(m.sprite)) { wrap.textContent = m.emoji; return wrap; }
       const img = new Image();
@@ -539,8 +595,8 @@
 
     // ---------- отрисовка ----------
     function render() {
-      $("spores").textContent = "🌱 " + fmt(spores);
-      $("dust").textContent = "✨ " + fmt(dust);
+      setText($("spores"), "🌱 " + fmt(spores));
+      setText($("dust"), "✨ " + fmt(dust));
       $("income").textContent = "+" + passive.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " спор/сек" +
         (state && (state.click_mult > 1 || state.passive_mult > 1)
           ? " · 🔮 ×" + num(state.click_mult) + (state.passive_mult !== state.click_mult ? "/×" + num(state.passive_mult) : "") : "");
@@ -619,7 +675,7 @@
           el.classList.add("filled");
           if (s.wild) el.classList.add("wild");
           if (s.mushroom.kind === "boost") el.classList.add("boost");
-          el.appendChild(icon(s.mushroom));
+          el.appendChild(icon(s.mushroom, true));
         }
         scene.appendChild(el);
         return el;
@@ -862,7 +918,7 @@
         chip(r.name + "<i>" + r.n + "</i>", r.color, sellSel.has(key), () => {
           sellSel.has(key) ? sellSel.delete(key) : sellSel.add(key); renderSell(); renderInv();
         }));
-      chip("✨ Глянцевые остаются", "#ffe27a", keepGlossy, () => { keepGlossy = !keepGlossy; renderSell(); renderInv(); });
+      chip("💎 Глянцевые остаются", "#ffe27a", keepGlossy, () => { keepGlossy = !keepGlossy; renderSell(); renderInv(); });
       const list = sellList();
       $("sellGo").disabled = !list.length;
       $("sellGo").textContent = list.length ? "Продать " + list.length + " шт. за " + totalText(list)
@@ -937,7 +993,7 @@
       : "👆 " + fmt(m.click) + " · ⏳ " + num(m.passive) + "/с";
     function mushHead(m) {
       return `<div class="head">${iconHtml(m)}<div>
-                <div class="big">${m.name}${m.glossy ? " ✨" : ""}</div>
+                <div class="big">${m.name}${m.glossy ? " 💎" : ""}</div>
                 <div style="color:${m.color}">${m.rarity_name}</div></div></div>
               <div class="muted" style="margin-bottom:8px">${m.desc}</div>`;
     }
@@ -1051,7 +1107,7 @@
         <div class="badge">−${d.discount}%</div>
         <div class="dtop"><span>🔥 Предложение дня</span><span>⏰ <span id="dealTimer"></span></span></div>
         <div class="dmain" data-open="deal">${iconHtml(m)}<div style="min-width:0">
-          <div class="dname">${m.name}${m.glossy ? " ✨" : ""}</div>
+          <div class="dname">${m.name}${m.glossy ? " 💎" : ""}</div>
           <div style="color:${m.color};font-size:13px">${m.rarity_name}</div>
           <div class="st">${shortStats(m)} · 🎓 ур. ${m.level}</div></div></div>
         <div class="dbuy"><div><s>${fmt(d.full_price)}</s><span class="newp">${fmt(d.price)} 🌱</span></div>
@@ -1273,6 +1329,8 @@
           el.classList.remove("bump");
           void el.offsetWidth;
           el.classList.add("bump");
+          const live = el.querySelector(".ico.anim");
+          if (live && live.dataset.cur !== "click") playAnim(live, "click");
         }
       });
 
@@ -1385,6 +1443,7 @@
       if (!document.hidden && !busy && (pending > 0 || idleTicks >= 10 || wildDue || wildWait)) { idleTicks = 0; sync(); }
     }, 1000);
 
+    curify(document.body);
     layout();
     sync();
   </script>
