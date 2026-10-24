@@ -1,1 +1,1 @@
-const API = "https://dame-nuclear-utilization-proved.trycloudflare.com";
+const API = "https://dense-considerable-operate-confident.trycloudflare.com";
