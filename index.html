@@ -1820,7 +1820,7 @@
     }
     setInterval(passiveTick, 1000);
     let idleTicks = 0;
-    setInterval(() => {                                                    // связь с сервером
+    setInterval(() => {                                                    // связь с сервером,.
       idleTicks++;
       const wildDue = state && (state.wild || []).some((w) => w.ends_in - (Date.now() - stateAt) / 1000 <= 0);
       const wildWait = state && state.slots.some((x) => x.wild && x.unlocked && !x.mushroom) && idleTicks >= 4;
