@@ -27,7 +27,7 @@
     #xptext { opacity: .7; min-width: 70px; text-align: right; }
 
     /* ---------- поляна ---------- */
-    #stage { position: relative; flex: 1; min-height: 0; touch-action: manipulation; display: flex; align-items: center; justify-content: center;
+    #stage { position: relative; z-index: 0; flex: 1; min-height: 0; touch-action: manipulation; display: flex; align-items: center; justify-content: center;
              background: url(assets/ground.webp) center / cover no-repeat, #0f1d14;
              box-shadow: inset 0 14px 14px -10px rgba(0,0,0,.65), inset 0 -14px 14px -10px rgba(0,0,0,.65); }
     #scene { position: relative; z-index: 0; isolation: isolate; touch-action: manipulation; }   /* z-index слотов не вылезает за поляну */
@@ -55,13 +55,65 @@
     .slot.boost .ico { filter: drop-shadow(0 0 6px #9be7ff); }
     .slot.bump .ico { animation: bump .15s; transform-origin: 50% 86%; }   /* вздрагивает только гриб, ямка стоит */
     @keyframes bump { 50% { transform: scale(.9); } }
-    #menuBtn { position: absolute; left: 8px; top: 8px; z-index: 20; width: 34px; height: 26px; padding: 0; border-radius: 9px;
+    #menuBtn { position: absolute; left: 8px; top: 8px; z-index: 5; width: 34px; height: 26px; padding: 0; border-radius: 9px;
                border: 1px solid #c9a23a; background: rgba(14,23,18,.85); color: #ffe27a; font-size: 14px; }
     #menuBtn.open span { display: inline-block; transform: rotate(180deg); }
-    #menuPanel { position: absolute; left: 8px; top: 40px; z-index: 20; display: none; flex-direction: column; gap: 6px; padding: 8px;
+    #menuPanel { position: absolute; left: 8px; top: 40px; z-index: 5; display: none; flex-direction: column; gap: 6px; padding: 8px;
                  border-radius: 12px; background: rgba(14,23,18,.94); border: 1px solid #c9a23a; box-shadow: 0 6px 18px rgba(0,0,0,.6); }
     #menuPanel.open { display: flex; }
     #menuPanel button { padding: 9px 14px; border-radius: 9px; border: 1px solid #4b6b50; background: #1d3325; color: #fff; font-size: 14px; text-align: left; }
+    body.inUp #menuBtn, body.inUp #menuPanel { display: none; }
+    /* ---------- паки ---------- */
+    #packs { position: fixed; left: 50%; top: 0; width: min(100vw, 520px); height: 92dvh; z-index: 16; display: flex; flex-direction: column;
+             box-sizing: border-box; transform: translate(-50%, -105%); visibility: hidden;
+             transition: transform .35s cubic-bezier(.2,.8,.2,1), visibility 0s .35s;
+             background: radial-gradient(ellipse at 50% 0%, #3a2a5c 0%, #1d1830 55%, #120f20 100%);
+             border-radius: 0 0 22px 22px; box-shadow: 0 8px 28px rgba(0,0,0,.65); border-bottom: 2px solid #c9a23a; }
+    #packs.open { transform: translate(-50%, 0); visibility: visible; transition: transform .35s cubic-bezier(.2,.8,.2,1), visibility 0s; }
+    #pkHead { display: flex; align-items: center; gap: 10px; padding: 14px 14px 8px; }
+    #pkHead b { flex: 1; font-size: 18px; color: #ffd76a; letter-spacing: .05em; }
+    #pkHead button { border: 1px solid #c9a23a; border-radius: 10px; background: rgba(0,0,0,.35); color: #ffe27a; padding: 7px 12px; font-size: 15px; }
+    #pkBody { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 16px; }
+    .pkcard { position: relative; margin: 8px 0; padding: 16px 14px 14px; border-radius: 18px; text-align: center; cursor: pointer;
+              background: linear-gradient(160deg, #5b3c8f, #2a1f4d 60%, #3a2570); border: 2px solid #c9a23a;
+              box-shadow: 0 0 22px rgba(160,107,232,.35), inset 0 0 30px rgba(255,255,255,.06); }
+    .pkcard:active { transform: scale(.98); }
+    .pkfan { height: 96px; position: relative; margin-bottom: 6px; }
+    .pkfan .ico { position: absolute; bottom: 0; width: 78px; height: 78px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
+    .pkcard h3 { margin: 4px 0 2px; font-size: 19px; color: #fff3c0; }
+    .pkcard .muted { font-size: 12px; opacity: .75; }
+    .pkprice { display: inline-block; margin-top: 8px; padding: 5px 14px; border-radius: 999px; background: rgba(0,0,0,.4); color: #ffe27a; font-weight: bold; }
+    .pksoon { margin: 8px 0; padding: 18px 14px; border-radius: 18px; text-align: center; border: 2px dashed #5a4a86; color: #9c92bd; font-size: 14px; }
+    #pkRoulette { position: relative; height: 112px; margin: 6px 0 10px; border-radius: 14px; overflow: hidden;
+                  background: linear-gradient(#0d0a18, #1c1531); border: 2px solid #c9a23a; box-shadow: inset 0 0 18px rgba(0,0,0,.8); }
+    #pkRoulette::before, #pkRoulette::after { content: ""; position: absolute; top: 0; bottom: 0; width: 60px; z-index: 2; pointer-events: none; }
+    #pkRoulette::before { left: 0; background: linear-gradient(90deg, #0d0a18, transparent); }
+    #pkRoulette::after { right: 0; background: linear-gradient(270deg, #0d0a18, transparent); }
+    #pkMark { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #ffd76a; z-index: 3;
+              box-shadow: 0 0 10px #ffd76a; }
+    #pkMark::before { content: "▼"; position: absolute; top: -3px; left: -6px; color: #ffd76a; font-size: 14px; }
+    #pkTrack { position: absolute; left: 0; top: 0; bottom: 0; display: flex; will-change: transform; }
+    .pkit { flex: none; width: 92px; height: 100%; display: flex; align-items: center; justify-content: center; position: relative;
+            border-right: 1px solid rgba(255,255,255,.06); }
+    .pkit::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 6px; height: 3px; border-radius: 2px; background: var(--c, #888); }
+    .pkit .ico { width: 70px; height: 70px; }
+    #pkCounts { display: flex; gap: 6px; margin: 6px 0; }
+    #pkCounts button { flex: 1; padding: 9px 0; border-radius: 10px; border: 1px solid #5a4a86; background: #2a2145; color: #fff; font-size: 15px; font-weight: bold; }
+    #pkCounts button.sel { border-color: #ffd76a; background: #4b3a7a; color: #ffe27a; }
+    #pkCounts button.lock { opacity: .5; }
+    #pkOpen { width: 100%; padding: 13px; margin: 4px 0 8px; border-radius: 14px; border: 2px solid #ffd76a; font-size: 17px; font-weight: bold;
+              color: #2b1a00; background: linear-gradient(#ffe27a, #e0a82a); }
+    #pkOpen:disabled { opacity: .55; }
+    #pkResult { min-height: 54px; text-align: center; margin: 4px 0 8px; }
+    #pkResult .res { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 12px; background: rgba(0,0,0,.35); border: 1px solid var(--c, #888); }
+    #pkResult .res .ico { width: 44px; height: 44px; }
+    #pkResult .grid5 { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+    .pkrow { display: flex; align-items: center; gap: 10px; padding: 6px 8px; margin: 4px 0; border-radius: 12px; background: rgba(0,0,0,.28); border-left: 4px solid var(--c, #888); }
+    .pkrow .ico { width: 42px; height: 42px; flex: none; }
+    .pkrow .nm { flex: 1; font-size: 14px; }
+    .pkrow .nm small { display: block; font-size: 11px; opacity: .75; }
+    .pkrow .ch { font-weight: bold; color: #ffe27a; }
+    .pklist h4 { margin: 12px 0 4px; font-size: 13px; opacity: .8; text-transform: uppercase; letter-spacing: .08em; }
     .cost { position: absolute; top: 134%; left: 50%; transform: translateX(-50%); font-size: 11px;
             white-space: nowrap; color: #ffb4b4; background: rgba(0,0,0,.55); border-radius: 6px; padding: 1px 6px; }
     .cost.ok { color: #9dff9d; }
@@ -332,6 +384,11 @@
       <button id="btnPack" title="Паки"><span class="ic">🎁</span><span class="lb">Паки</span></button>
       <button id="btnUpgrades" title="Улучшения"><span class="ic">⬆️</span><span class="lb">Улучш.</span></button>
     </div>
+  </div>
+
+  <div id="packs">
+    <div id="pkHead"><button id="pkBack" hidden>←</button><b id="pkTitle">🎁 ПАКИ</b><span id="pkSpores"></span><button id="pkClose">✕</button></div>
+    <div id="pkBody"></div>
   </div>
 
   <div id="sheet">
@@ -1332,7 +1389,100 @@
         </div>`);
     };
     $("btnMut").onclick = () => alertMsg("Мутации скоро!");
-    $("btnPack").onclick = () => alertMsg("Паки скоро!");
+    // ---------- паки ----------
+    let packsData = null, packSel = null, packCount = 1, packBusy = false;
+    const rarColor = (m) => `--c:${m.color}`;
+    function pickWeighted(pool) {
+      let t = Math.random() * pool.reduce((a, x) => a + x.chance, 0);
+      for (const x of pool) { t -= x.chance; if (t <= 0) return x.mushroom; }
+      return pool[0].mushroom;
+    }
+    async function openPacks() {
+      closeSheet(); closeShop();
+      $("packs").classList.add("open"); document.body.classList.add("inUp");
+      renderPacksList();
+      try { packsData = await api("/api/packs"); renderPacksList(); } catch (e) { toast("❌ " + e.message); }
+    }
+    function closePacks() { $("packs").classList.remove("open"); if (!$("upPage").classList.contains("open")) document.body.classList.remove("inUp"); }
+    function renderPacksList() {
+      packSel = null; $("pkBack").hidden = true; $("pkTitle").textContent = "🎁 ПАКИ";
+      $("pkSpores").textContent = "🌱 " + fmt(spores);
+      const body = $("pkBody"); body.innerHTML = "";
+      if (!packsData) { body.innerHTML = '<div class="pksoon">Загрузка…</div>'; return; }
+      packsData.packs.forEach((pk) => {
+        const c = document.createElement("div"); c.className = "pkcard";
+        const fan = document.createElement("div"); fan.className = "pkfan";
+        const show = pk.pool.slice(0, 5);
+        show.forEach((x, i) => {
+          const ic = icon(x.mushroom); const n = show.length;
+          ic.style.left = `calc(50% - 39px + ${(i - (n - 1) / 2) * 46}px)`; ic.style.zIndex = 10 - Math.abs(i - (n - 1) / 2) * 2;
+          ic.style.transform = `rotate(${(i - (n - 1) / 2) * 9}deg)`; fan.appendChild(ic);
+        });
+        c.appendChild(fan);
+        c.insertAdjacentHTML("beforeend", `<h3>${pk.name}</h3><div class="muted">${pk.desc}</div><div class="pkprice">🌱 ${fmt(pk.cost)}</div>`);
+        c.onclick = () => renderRoulette(pk);
+        body.appendChild(c);
+      });
+      body.insertAdjacentHTML("beforeend", '<div class="pksoon">🔒 Донат-паки и другие наборы скоро</div>');
+    }
+    function stripItem(m) { const d = document.createElement("div"); d.className = "pkit"; d.style.setProperty("--c", m.color); d.appendChild(icon(m)); return d; }
+    function fillStrip(pk, winner) {
+      const tr = $("pkTrack"); tr.style.transition = "none"; tr.style.transform = "translateX(0)"; tr.innerHTML = "";
+      const N = 48, WIN = 40;
+      for (let i = 0; i < N; i++) tr.appendChild(stripItem(i === WIN && winner ? winner : pickWeighted(pk.pool)));
+      return WIN;
+    }
+    function renderRoulette(pk) {
+      packSel = pk; $("pkBack").hidden = false; $("pkTitle").textContent = pk.name.toUpperCase();
+      const body = $("pkBody");
+      body.innerHTML = `<div id="pkRoulette"><div id="pkMark"></div><div id="pkTrack"></div></div>
+        <div id="pkCounts"></div>
+        <button id="pkOpen"></button>
+        <div id="pkResult"></div>
+        <div class="pklist"><h4>Что может выпасть</h4>${pk.pool.map((x) => `<div class="pkrow" style="${rarColor(x.mushroom)}">${iconHtml(x.mushroom)}
+          <div class="nm">${x.mushroom.name}<small style="color:${x.mushroom.color}">${x.mushroom.rarity_name}</small></div><div class="ch">${x.chance}%</div></div>`).join("")}</div>`;
+      fillStrip(pk, null); packCount = 1; drawPackButtons();
+      $("pkOpen").onclick = doOpenPack;
+    }
+    function drawPackButtons() {
+      const pk = packSel, box = $("pkCounts"); box.innerHTML = "";
+      packsData.counts.forEach((n) => {
+        const b = document.createElement("button"), locked = n > packsData.max_open;
+        b.textContent = locked ? "🔒 ×" + n : "×" + n; b.className = (locked ? "lock " : "") + (n === packCount ? "sel" : "");
+        b.onclick = () => { if (packBusy) return; if (locked) { toast("🔒 Откроется в улучшениях"); return; } packCount = n; drawPackButtons(); };
+        box.appendChild(b);
+      });
+      const o = $("pkOpen"); o.disabled = packBusy; o.innerHTML = `Открыть ×${packCount} · 🌱 ${fmt(pk.cost * packCount)}`;
+      $("pkSpores").textContent = "🌱 " + fmt(spores);
+    }
+    async function doOpenPack() {
+      if (packBusy || !packSel) return;
+      const pk = packSel;
+      if (spores < pk.cost * packCount) { toast("Не хватает спор"); return; }
+      packBusy = true; drawPackButtons(); $("pkResult").innerHTML = "";
+      let res;
+      try { while (syncing) await new Promise((q) => setTimeout(q, 50)); await sync(); res = await api("/api/packs/open", { pack: pk.id, count: packCount }); }
+      catch (e) { packBusy = false; drawPackButtons(); toast("❌ " + e.message); return; }
+      const win = res.results[0], WIN = fillStrip(pk, win), tr = $("pkTrack");
+      const box = $("pkRoulette").clientWidth, off = (Math.random() - .5) * 60;
+      void tr.offsetWidth;
+      tr.style.transition = "transform 4.2s cubic-bezier(.12,.62,.08,1)";
+      tr.style.transform = `translateX(${-(WIN * 92 + 46 + off - box / 2)}px)`;
+      try { tg.HapticFeedback.impactOccurred("medium"); } catch (_) {}
+      setTimeout(() => {
+        applyState(res);
+        const out = $("pkResult"); if (!out) return;
+        if (res.results.length === 1) {
+          out.innerHTML = `<div class="res" style="${rarColor(win)}">${iconHtml(win)}<div><b>${win.name}</b>${win.glossy ? " 💎" : ""}<br><small style="color:${win.color}">${win.rarity_name}</small></div></div>`;
+        } else {
+          out.innerHTML = '<div class="grid5">' + res.results.map((m) => `<div class="res" style="${rarColor(m)}" title="${m.name}">${iconHtml(m)}</div>`).join("") + "</div>";
+        }
+        packBusy = false; if (packSel) drawPackButtons();
+      }, 4400);
+    }
+    $("btnPack").onclick = openPacks;
+    $("pkClose").onclick = closePacks;
+    $("pkBack").onclick = () => { if (!packBusy) renderPacksList(); };
 
 
     // ---------- древо улучшений ----------
@@ -1343,7 +1493,7 @@
     function setUpgrades(d) { upData = d; if ($("upPage").classList.contains("open")) renderUpgrades(); }
     async function openUpgrades() {
       closeSheet(); closeShop();
-      $("upPage").classList.add("open");
+      $("upPage").classList.add("open"); document.body.classList.add("inUp");
       try { setUpgrades(await api("/api/upgrades")); centerUpgrades(); } catch (e) { toast("❌ " + e.message); }
     }
     function centerUpgrades() {
@@ -1458,7 +1608,7 @@
         ${!isOwned && par && !owned.has(par.id) ? `<div class="bad">Сначала: ${par.name}</div>` : ""}
         <div class="btns">${btn}<button class="ghost" data-act="close">Закрыть</button></div>`);
     }
-    $("upBack").onclick = () => $("upPage").classList.remove("open");
+    $("upBack").onclick = () => { $("upPage").classList.remove("open"); document.body.classList.remove("inUp"); };
     $("btnUpgrades").onclick = openUpgrades;
 
     // ---------- проверка «ты не робот?» ----------
@@ -1496,6 +1646,12 @@
 
     // ---------- клики по поляне ----------
     const downAt = new Map();                          // когда палец/кнопка опустились (для длительности нажатия)
+    // клики считаются только внутри овала поляны (по прозрачной картинке meadow.webp: центр 50,5% x 50%, радиусы 49,5% x 50%)
+    function inMeadow(e) {
+      const r = scene.getBoundingClientRect();
+      const dx = ((e.clientX - r.left) / r.width - 0.505) / 0.495, dy = ((e.clientY - r.top) / r.height - 0.5) / 0.5;
+      return dx * dx + dy * dy <= 1;
+    }
     let renderQueued = false;
     const tapEntry = new Map();
     function doClick(e) {                             // клик по поляне = клик сразу по всем грибам
@@ -1537,11 +1693,33 @@
       try { tg.HapticFeedback.impactOccurred("light"); } catch (_) {}
     }
 
+    // клики считаются только внутри круга поляны: берём форму из прозрачности картинки meadow.webp
+    let meadowMask = null;
+    (function () {
+      const im = new Image();
+      im.onload = () => {
+        try {
+          const W = 220, H = Math.round(220 / SCENE_RATIO), c = document.createElement("canvas");
+          c.width = W; c.height = H;
+          const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(im, 0, 0, W, H);
+          meadowMask = { W, H, a: g.getImageData(0, 0, W, H).data };
+        } catch (_) { meadowMask = null; }                          // если браузер не дал прочитать, ниже используем эллипс
+      };
+      im.src = "assets/meadow.webp";
+    })();
+    function inMeadow(cx, cy) {
+      const r = scene.getBoundingClientRect(), u = (cx - r.left) / r.width, v = (cy - r.top) / r.height;
+      if (u < 0 || u > 1 || v < 0 || v > 1) return false;
+      if (!meadowMask) return ((u - .5) * 2) ** 2 + ((v - .5) * 2) ** 2 <= 1;
+      const x = Math.min(meadowMask.W - 1, Math.floor(u * meadowMask.W)), y = Math.min(meadowMask.H - 1, Math.floor(v * meadowMask.H));
+      return meadowMask.a[(y * meadowMask.W + x) * 4 + 3] > 40;
+    }
     stage.addEventListener("pointerdown", (e) => {
       downAt.set(e.pointerId, e.timeStamp);
+      if (!e.target.closest(".slot") && !inMeadow(e.clientX, e.clientY)) { scenePointer = null; return; }   // вне поляны не кликается
       if (state) {                                                  // клик засчитываем сразу при касании, без ожидания отпускания
         const sl = e.target.closest(".slot");
-        if (!sl || !sl.classList.contains("locked")) doClick(e);
+        if ((sl ? !sl.classList.contains("locked") : inMeadow(e))) doClick(e);
       }
       if (!e.isPrimary) return;
       held = false;
