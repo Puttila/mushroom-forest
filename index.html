@@ -27,7 +27,7 @@
     #xptext { opacity: .7; min-width: 70px; text-align: right; }
 
     /* ---------- поляна ---------- */
-    #stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+    #stage { position: relative; flex: 1; min-height: 0; touch-action: manipulation; display: flex; align-items: center; justify-content: center;
              background: url(assets/ground.webp) center / cover no-repeat, #0f1d14;
              box-shadow: inset 0 14px 14px -10px rgba(0,0,0,.65), inset 0 -14px 14px -10px rgba(0,0,0,.65); }
     #scene { position: relative; z-index: 0; isolation: isolate; touch-action: manipulation; }   /* z-index слотов не вылезает за поляну */
@@ -53,13 +53,14 @@
     .slot.locked.wild .mound { filter: grayscale(.3) brightness(.6) sepia(.5) hue-rotate(-20deg); }
     .slot.wild.empty { pointer-events: none; }
     .slot.boost .ico { filter: drop-shadow(0 0 6px #9be7ff); }
-    .slot.bump { animation: bump .15s; }
-    @keyframes bump { 50% { transform: translate(-50%, -86%) scale(.9); } }
+    .slot.bump .ico { animation: bump .15s; transform-origin: 50% 86%; }   /* вздрагивает только гриб, ямка стоит */
+    @keyframes bump { 50% { transform: scale(.9); } }
     .cost { position: absolute; top: 134%; left: 50%; transform: translateX(-50%); font-size: 11px;
             white-space: nowrap; color: #ffb4b4; background: rgba(0,0,0,.55); border-radius: 6px; padding: 1px 6px; }
     .cost.ok { color: #9dff9d; }
 
-    .pop { position: absolute; font-weight: bold; color: #fff3a0; pointer-events: none;
+    .pop { position: absolute; z-index: 9999; font-weight: bold; color: #fff3a0; pointer-events: none;
+           text-shadow: 0 0 5px #000, 0 0 2px #000;
            animation: pop .7s ease-out forwards; }
     @keyframes pop { to { transform: translateY(-50px); opacity: 0; } }
 
@@ -151,9 +152,12 @@
               font-size: 15px; font-weight: bold; }
     #upBar b { flex: 1; text-align: center; font-size: 17px; color: #ffd76a; letter-spacing: .06em; text-transform: uppercase; }
     #upCur { white-space: pre; font-size: 13px; text-align: right; line-height: 1.35; min-width: 74px; }
-    #upScroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y;
+    #upScroll { position: relative; flex: 1; min-height: 0; overflow: hidden; touch-action: none; user-select: none;
                 background: radial-gradient(circle at 50% 50%, #1b2c22, #101a14 70%); }
-    #upCanvas { position: relative; }
+    #upCanvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+    #upZoom { position: absolute; right: 10px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
+    #upZoom button { width: 42px; height: 42px; border-radius: 12px; border: 1px solid #c9a23a; background: rgba(42,16,16,.88);
+                     color: #ffe27a; font-size: 22px; font-weight: bold; }
     #upLines { position: absolute; inset: 0; pointer-events: none; }
     #upLines line { stroke: #6b5a2a; stroke-width: 3; }
     .unode { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; box-sizing: border-box; padding: 0;
@@ -339,7 +343,7 @@
 
   <div id="upPage">
     <div id="upBar"><button id="upBack">← Назад</button><b>Улучшения</b><div id="upCur"></div></div>
-    <div id="upScroll"><div id="upCanvas"><svg id="upLines"></svg></div></div>
+    <div id="upScroll"><div id="upCanvas"><svg id="upLines"></svg></div><div id="upZoom"><button id="upIn">+</button><button id="upOut">−</button><button id="upHome">◎</button></div></div>
   </div>
 
   <div id="shop">
@@ -1325,8 +1329,54 @@
     }
     function centerUpgrades() {
       const sc = $("upScroll"), c = upCenter();
-      sc.scrollLeft = c.x - sc.clientWidth / 2; sc.scrollTop = c.y - sc.clientHeight / 2;
+      view.k = 1; view.x = sc.clientWidth / 2 - c.x; view.y = sc.clientHeight / 2 - c.y; applyView();
     }
+    // масштаб и перемещение древа: один палец тянет, два пальца (или колесо, или кнопки +/−) приближают
+    const view = { x: 0, y: 0, k: 1 }, K_MIN = 0.35, K_MAX = 2.6;
+    function applyView() {
+      const sc = $("upScroll"), c = upData ? upCenter() : { w: 600, h: 600 };
+      const w = c.w * view.k, h = c.h * view.k, m = 80;                       // древо нельзя утащить совсем за экран
+      view.x = Math.min(sc.clientWidth - m, Math.max(m - w, view.x));
+      view.y = Math.min(sc.clientHeight - m, Math.max(m - h, view.y));
+      $("upCanvas").style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`;
+    }
+    function zoomAt(cx, cy, k2) {                                              // cx, cy: точка на экране, которая остаётся на месте
+      k2 = Math.min(K_MAX, Math.max(K_MIN, k2));
+      view.x = cx - (cx - view.x) * k2 / view.k; view.y = cy - (cy - view.y) * k2 / view.k; view.k = k2;
+      applyView();
+    }
+    (function () {
+      const sc = $("upScroll"), ptrs = new Map();
+      let drag = false, pinch = null;
+      const rel = (e) => { const r = sc.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+      sc.addEventListener("pointerdown", (e) => {
+        if (e.target.closest("#upZoom")) return;
+        ptrs.set(e.pointerId, { s: rel(e), p: rel(e) });
+        drag = false; pinch = null;
+        if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1]) || 1, k: view.k }; drag = true; }
+      });
+      sc.addEventListener("pointermove", (e) => {
+        const t = ptrs.get(e.pointerId); if (!t) return;
+        const [x, y] = rel(e), dx = x - t.p[0], dy = y - t.p[1]; t.p = [x, y];
+        if (ptrs.size >= 2 && pinch) {
+          const [a, b] = [...ptrs.values()], d = Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1]) || 1;
+          zoomAt((a.p[0] + b.p[0]) / 2, (a.p[1] + b.p[1]) / 2, pinch.k * d / pinch.d);
+          view.x += dx / 2; view.y += dy / 2; applyView();                    // и заодно двигаем вслед за пальцами
+        } else if (ptrs.size === 1) {
+          if (!drag && Math.hypot(x - t.s[0], y - t.s[1]) > 8) { drag = true; try { sc.setPointerCapture(e.pointerId); } catch (_) {} }
+          if (drag) { view.x += dx; view.y += dy; applyView(); }
+        }
+      });
+      const up = (e) => {
+        ptrs.delete(e.pointerId); pinch = null;
+        if (ptrs.size === 0) setTimeout(() => { drag = false; }, 0);
+      };
+      sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
+      sc.addEventListener("click", (e) => { if (drag) { e.stopPropagation(); e.preventDefault(); } }, true);   // после перетаскивания не считаем нажатием на значок
+      sc.addEventListener("wheel", (e) => { e.preventDefault(); const [x, y] = rel(e); zoomAt(x, y, view.k * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+      const mid = (f) => () => { zoomAt(sc.clientWidth / 2, sc.clientHeight / 2, view.k * f); };
+      $("upIn").onclick = mid(1.3); $("upOut").onclick = mid(1 / 1.3); $("upHome").onclick = () => centerUpgrades();
+    })();
     function upCenter() {
       const xs = upData.nodes.map((n) => n.x), ys = upData.nodes.map((n) => n.y);
       return { x: UP_PAD - Math.min(...xs) * UP_STEP, y: UP_PAD - Math.min(...ys) * UP_STEP,
@@ -1336,7 +1386,7 @@
       if (!upData || !state) return;
       const cv = $("upCanvas"), c = upCenter(), owned = upOwned();
       cv.querySelectorAll(".unode, .uprice").forEach((e) => e.remove());
-      cv.style.width = Math.max(c.w, innerWidth) + "px"; cv.style.height = Math.max(c.h, innerHeight - 70) + "px";
+      cv.style.width = c.w + "px"; cv.style.height = c.h + "px";
       const svg = $("upLines"); svg.setAttribute("width", cv.style.width.replace("px", "")); svg.setAttribute("height", cv.style.height.replace("px", ""));
       svg.innerHTML = "";
       const byId = new Map(upData.nodes.map((n) => [n.id, n]));
@@ -1452,19 +1502,19 @@
         }
       });
 
-      const rect = scene.getBoundingClientRect();
+      const rect = stage.getBoundingClientRect();
       const pop = document.createElement("div");
       pop.className = "pop";
       pop.textContent = "+" + fmt(clickPower);
       pop.style.left = (e.clientX - rect.left - 10) + "px";
       pop.style.top = (e.clientY - rect.top - 20) + "px";
       pop.addEventListener("animationend", () => pop.remove());
-      scene.appendChild(pop);
+      stage.appendChild(pop);
 
       try { tg.HapticFeedback.impactOccurred("light"); } catch (_) {}
     }
 
-    scene.addEventListener("pointerdown", (e) => {
+    stage.addEventListener("pointerdown", (e) => {
       downAt.set(e.pointerId, e.timeStamp);
       if (!e.isPrimary) return;
       held = false;
@@ -1497,7 +1547,7 @@
         clearTimeout(holdTimer);
       }
     });
-    scene.addEventListener("pointerup", (e) => {
+    stage.addEventListener("pointerup", (e) => {
       setTimeout(() => downAt.delete(e.pointerId), 0);
       clearTimeout(holdTimer);
       const moved = scenePointer && scenePointer.id === e.pointerId && scenePointer.moved;
@@ -1511,7 +1561,7 @@
       }
       held = false;
     });
-    scene.addEventListener("pointercancel", () => {
+    stage.addEventListener("pointercancel", () => {
       clearTimeout(holdTimer);
       scenePointer = null;
       held = false;
