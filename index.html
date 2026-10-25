@@ -125,6 +125,9 @@
     .pkcard h3 { margin: 4px 0 2px; font-size: 19px; color: #fff3c0; }
     .pkcard .muted { font-size: 12px; opacity: .75; }
     .pkprice { display: inline-block; margin-top: 8px; padding: 5px 14px; border-radius: 999px; background: rgba(0,0,0,.4); color: #ffe27a; font-weight: bold; }
+    .pkpity { margin-top: 10px; font-size: 12px; opacity: .95; }
+    .pkpbar { height: 7px; border-radius: 4px; background: rgba(0,0,0,.45); overflow: hidden; margin-bottom: 4px; }
+    .pkpbar i { display: block; height: 100%; }
     .pksoon { margin: 8px 0; padding: 18px 14px; border-radius: 18px; text-align: center; border: 2px dashed #5a4a86; color: #9c92bd; font-size: 14px; }
     #pkRoulette { position: relative; height: 112px; margin: 6px 0 10px; border-radius: 14px; overflow: hidden;
                   background: linear-gradient(#0d0a18, #1c1531); border: 2px solid #c9a23a; box-shadow: inset 0 0 18px rgba(0,0,0,.8); }
@@ -1436,7 +1439,7 @@
         </div>`);
     };
     // ---------- мутации ----------
-    let mutInfo = null, mutSel = [], mutBusy = false;
+    let mutInfo = null, mutSel = [], mutBusy = false, mutGhostTimer = 0;
     async function openMut() {
       closeSheet(); closeShop(); closePacks();
       $("mut").classList.add("open"); document.body.classList.add("inUp");
@@ -1445,7 +1448,7 @@
     }
     function closeMut() { $("mut").classList.remove("open"); if (!$("upPage").classList.contains("open")) document.body.classList.remove("inUp"); }
     function renderMutMenu() {
-      mutSel = []; $("mtBack").hidden = true; $("mtTitle").textContent = "🧬 МУТАЦИИ";
+      clearInterval(mutGhostTimer); mutSel = []; $("mtBack").hidden = true; $("mtTitle").textContent = "🧬 МУТАЦИИ";
       $("mtBody").innerHTML = `<button class="mtbtn" id="mtUp"><span class="ic">⚗️</span><span>Улучшение гриба<small>Сплавь несколько грибов в один редкостью выше</small></span></button>
         <button class="mtbtn soon" id="mtGrow"><span class="ic">🌱</span><span>Выращивание грибов<small>Скоро</small></span></button>`;
       $("mtUp").onclick = async () => { if (!mutInfo) { try { mutInfo = await api("/api/mutate/info"); } catch (e) { toast("❌ " + e.message); return; } } renderMutUpgrade(); };
@@ -1472,6 +1475,13 @@
       const ch = mutChance();
       $("mtMid").innerHTML = `<div class="arrow">➜</div>` + (mutSel.length >= (mutInfo ? mutInfo.min : 2) && nextName ? `<b>${ch}%</b>${nextName}` : (mutSel.length && !nextName ? "Выше некуда" : `Положи от ${mutInfo ? mutInfo.min : 2} до 5 грибов одной редкости`));
       if (!keepOut) { $("mtOut").className = ""; $("mtOut").innerHTML = ""; }
+      clearInterval(mutGhostTimer);
+      const ghosts = first && mutInfo && mutInfo.results[first.rarity] || [];
+      if (!keepOut && !mutBusy && ghosts.length) {                    // тёмные прозрачные силуэты того, во что можно мутировать
+        let gi = Math.floor(Math.random() * ghosts.length);
+        const show = () => { const o = $("mtOut"); if (!o || o.className) return; o.innerHTML = ""; const ic = icon(ghosts[gi % ghosts.length]); ic.style.opacity = ".32"; ic.style.filter = "brightness(.3) grayscale(.6)"; o.appendChild(ic); gi++; };
+        show(); mutGhostTimer = setInterval(show, 650);
+      }
       $("mtGo").disabled = mutBusy || !(ch && nextName);
       const inv = $("mtInv"); inv.innerHTML = "";
       const items = state.inventory.items.slice().sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name));
@@ -1493,7 +1503,7 @@
     }
     async function doMutate() {
       if (mutBusy || mutSel.length < mutInfo.min) return;
-      mutBusy = true; $("mtGo").disabled = true; $("mtMsg").textContent = "";
+      mutBusy = true; clearInterval(mutGhostTimer); $("mtGo").disabled = true; $("mtMsg").textContent = "";
       $("mtOut").className = ""; $("mtOut").innerHTML = "";
       let res;
       try { while (syncing) await new Promise((q) => setTimeout(q, 50)); await sync(); res = await api("/api/mutate/upgrade", { items: mutSel }); }
@@ -1541,11 +1551,16 @@
           ic.style.transform = `rotate(${(i - (n - 1) / 2) * 9}deg)`; fan.appendChild(ic);
         });
         c.appendChild(fan);
-        c.insertAdjacentHTML("beforeend", `<h3>${pk.name}</h3><div class="muted">${pk.desc}</div><div class="pkprice">🌱 ${fmt(pk.cost)}</div>`);
+        c.insertAdjacentHTML("beforeend", `<h3>${pk.name}</h3><div class="muted">${pk.desc}</div><div class="pkprice">🌱 ${fmt(pk.cost)}</div>${pityHtml(pk)}`);
         c.onclick = () => renderRoulette(pk);
         body.appendChild(c);
       });
       body.insertAdjacentHTML("beforeend", '<div class="pksoon">🔒 Донат-паки и другие наборы скоро</div>');
+    }
+    function pityHtml(pk) {
+      const t = pk.pity; if (!t) return "";
+      return `<div class="pkpity"><div class="pkpbar"><i style="width:${Math.min(100, t.n * 100 / t.every)}%;background:${t.color}"></i></div>
+        <span>Гарант: <b style="color:${t.color}">${t.rarity_name}</b> · ${t.n}/${t.every}</span></div>`;
     }
     function stripItem(m) { const d = document.createElement("div"); d.className = "pkit"; d.style.setProperty("--c", m.color); d.appendChild(icon(m)); return d; }
     function fillStrip(pk, winner) {
@@ -1561,6 +1576,7 @@
         <div id="pkCounts"></div>
         <button id="pkOpen"></button>
         <div id="pkResult"></div>
+        <div id="pkPity">${pityHtml(pk)}</div>
         <div class="pklist"><h4>Что может выпасть</h4>${pk.pool.map((x) => `<div class="pkrow" style="${rarColor(x.mushroom)}">${iconHtml(x.mushroom)}
           <div class="nm">${x.mushroom.name}<small style="color:${x.mushroom.color}">${x.mushroom.rarity_name}</small></div><div class="ch">${x.chance}%</div></div>`).join("")}</div>`;
       fillStrip(pk, null); packCount = 1; drawPackButtons();
@@ -1593,6 +1609,7 @@
       try { tg.HapticFeedback.impactOccurred("medium"); } catch (_) {}
       setTimeout(() => {
         applyState(res);
+        if (res.pity) { pk.pity = res.pity; if ($("pkPity")) $("pkPity").innerHTML = pityHtml(pk); }
         const out = $("pkResult"); if (!out) return;
         if (res.results.length === 1) {
           out.innerHTML = `<div class="res" style="${rarColor(win)}">${iconHtml(win)}<div><b>${win.name}</b>${win.glossy ? " 💎" : ""}<br><small style="color:${win.color}">${win.rarity_name}</small></div></div>`;
@@ -1772,7 +1789,7 @@
     function inMeadow(e) {
       const r = scene.getBoundingClientRect();
       const dx = ((e.clientX - r.left) / r.width - 0.505) / 0.495, dy = ((e.clientY - r.top) / r.height - 0.5) / 0.5;
-      return dx * dx + dy * dy <= 1;
+      return dx * dx + dy * dy <= 1.12;
     }
     let renderQueued = false;
     const tapEntry = new Map();
@@ -1841,7 +1858,7 @@
       if (!e.target.closest(".slot") && !inMeadow(e.clientX, e.clientY)) { scenePointer = null; return; }   // вне поляны не кликается
       if (state) {                                                  // клик засчитываем сразу при касании, без ожидания отпускания
         const sl = e.target.closest(".slot");
-        if ((sl ? !sl.classList.contains("locked") : inMeadow(e))) doClick(e);
+        if (sl || inMeadow(e)) doClick(e);                       // по ячейкам (и закрытым тоже) и по всему овалу
       }
       if (!e.isPrimary) return;
       held = false;
