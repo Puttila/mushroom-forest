@@ -567,7 +567,12 @@
     const sessionStart = Date.now();
 
     // ---------- мелочи ----------
-    const fmt = (n) => Math.floor(n).toLocaleString("ru-RU");
+    const fmt = (n) => {                                    // большие числа сокращаем, чтобы влезали в рамки
+      n = Math.floor(n);
+      if (n >= 1e12) return (n / 1e12).toLocaleString("ru-RU", { maximumFractionDigits: 2 }) + " трлн";
+      if (n >= 1e9) return (n / 1e9).toLocaleString("ru-RU", { maximumFractionDigits: 2 }) + " млрд";
+      return n.toLocaleString("ru-RU");
+    };
     const fmtTime = (s) => {
       s = Math.max(0, Math.floor(s));
       return [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60]
@@ -1497,7 +1502,7 @@
       $("mtGrow").onclick = () => toast("Скоро!");
     }
     const mutItem = (id) => state.inventory.items.find((x) => x.item === id);
-    function mutChance() { return mutInfo && mutSel.length >= mutInfo.min ? mutInfo.chances[mutSel.length] : 0; }
+    function mutChance() { const f = mutSel.length && mutItem(mutSel[0]); return mutInfo && f && mutSel.length >= mutInfo.min ? (mutInfo.chances[f.rarity] || {})[mutSel.length] || 0 : 0; }
     function renderMutUpgrade() {
       $("mtBack").hidden = false; $("mtTitle").textContent = "⚗️ УЛУЧШЕНИЕ ГРИБА";
       $("mtBody").innerHTML = `<div id="mtForge"><div id="mtIn"></div><div id="mtMid"></div><div id="mtOut"></div></div>
@@ -1700,6 +1705,7 @@
       try { tg.HapticFeedback.impactOccurred("medium"); } catch (_) {}
       setTimeout(() => {
         applyState(res);
+        if (res.pack_cost) pk.cost = res.pack_cost;
         if (res.pity) { pk.pity = res.pity; if ($("pkPity")) $("pkPity").innerHTML = pityHtml(pk); }
         const out = $("pkResult"); if (!out) return;
         if (res.results.length === 1) {
