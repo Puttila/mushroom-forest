@@ -1,1 +1,1 @@
-const API = "https://repairs-cams-jerusalem-ser.trycloudflare.com";
+const API = "https://curves-signature-intimate-postposted.trycloudflare.com";

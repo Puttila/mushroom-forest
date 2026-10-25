@@ -63,6 +63,48 @@
     #menuPanel.open { display: flex; }
     #menuPanel button { padding: 9px 14px; border-radius: 9px; border: 1px solid #4b6b50; background: #1d3325; color: #fff; font-size: 14px; text-align: left; }
     body.inUp #menuBtn, body.inUp #menuPanel { display: none; }
+    /* ---------- мутации ---------- */
+    #mut { position: fixed; left: 0; top: 0; width: min(100vw, 520px); height: 100dvh; z-index: 17; display: flex; flex-direction: column;
+           box-sizing: border-box; transform: translateX(-105%); visibility: hidden;
+           transition: transform .35s cubic-bezier(.2,.8,.2,1), visibility 0s .35s;
+           background: radial-gradient(ellipse at 50% 0%, #1f4a3a 0%, #12281f 55%, #0b1713 100%); border-right: 2px solid #47c05a;
+           box-shadow: 8px 0 28px rgba(0,0,0,.65); }
+    #mut.open { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.2,.8,.2,1), visibility 0s; }
+    #mtHead { display: flex; align-items: center; gap: 10px; padding: 14px 14px 8px; }
+    #mtHead b { flex: 1; font-size: 18px; color: #9bf0a8; letter-spacing: .05em; }
+    #mtHead button { border: 1px solid #47c05a; border-radius: 10px; background: rgba(0,0,0,.35); color: #bff7c6; padding: 7px 12px; font-size: 15px; }
+    #mtBody { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 16px; display: flex; flex-direction: column; }
+    .mtbtn { display: flex; align-items: center; gap: 14px; margin: 8px 0; padding: 18px 16px; border-radius: 18px; text-align: left; width: 100%;
+             color: #fff; border: 2px solid #47c05a; background: linear-gradient(160deg, #2e6b4a, #173a2b 70%); font-size: 18px; font-weight: bold;
+             box-shadow: 0 0 20px rgba(71,192,90,.25), inset 0 0 26px rgba(255,255,255,.05); }
+    .mtbtn .ic { font-size: 38px; }
+    .mtbtn small { display: block; margin-top: 3px; font-size: 12px; font-weight: normal; opacity: .75; }
+    .mtbtn.soon { opacity: .5; border-style: dashed; }
+    #mtForge { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 12px 8px; border-radius: 16px;
+               background: rgba(0,0,0,.3); border: 1px solid #2f6b47; }
+    #mtIn { display: flex; flex-wrap: wrap; gap: 8px; width: 186px; justify-content: center; }
+    .mtslot { width: 56px; height: 56px; border-radius: 12px; border: 2px dashed #3f8a5c; background: rgba(0,0,0,.35); position: relative; box-sizing: border-box; }
+    .mtslot.full { border: 2px solid var(--c, #47c05a); background: rgba(255,255,255,.06); }
+    .mtslot .ico { position: absolute; inset: 3px; }
+    #mtMid { text-align: center; font-size: 12px; flex: 1; }
+    #mtMid .arrow { font-size: 26px; color: #ffd76a; }
+    #mtMid b { display: block; font-size: 20px; color: #ffe27a; }
+    #mtOut { width: 84px; height: 84px; border-radius: 16px; border: 3px solid #c9a23a; background: rgba(0,0,0,.45); position: relative; box-sizing: border-box; flex: none; }
+    #mtOut .ico { position: absolute; inset: 6px; }
+    #mtOut.win { animation: mtWin 1s ease-out; box-shadow: 0 0 26px #ffd76a; border-color: #ffd76a; }
+    #mtOut.lose { box-shadow: 0 0 16px #ff6a6a; border-color: #b05050; }
+    @keyframes mtWin { 0% { transform: scale(.6); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
+    #mtIn.shake .mtslot { animation: mtShake .12s linear 6; }
+    @keyframes mtShake { 25% { transform: translate(-2px, 1px) rotate(-4deg); } 75% { transform: translate(2px, -1px) rotate(4deg); } }
+    #mtGo { width: 100%; padding: 13px; margin: 10px 0 4px; border-radius: 14px; border: 2px solid #9bf0a8; font-size: 17px; font-weight: bold;
+            color: #052010; background: linear-gradient(#aaf5b4, #47c05a); }
+    #mtGo:disabled { opacity: .45; }
+    #mtMsg { min-height: 20px; text-align: center; font-size: 14px; margin: 4px 0; color: #ffe27a; }
+    #mtInv { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; margin-top: 6px; }
+    .mcell { aspect-ratio: 1; border-radius: 10px; background: rgba(0,0,0,.3); border: 1px solid var(--c, #355); position: relative; padding: 0; }
+    .mcell .ico { position: absolute; inset: 4px; }
+    .mcell.dim { opacity: .3; }
+    #mtInvT { margin: 12px 0 2px; font-size: 13px; opacity: .8; text-transform: uppercase; letter-spacing: .08em; }
     /* ---------- паки ---------- */
     #packs { position: fixed; left: 50%; top: 0; width: min(100vw, 520px); height: 92dvh; z-index: 16; display: flex; flex-direction: column;
              box-sizing: border-box; transform: translate(-50%, -105%); visibility: hidden;
@@ -389,6 +431,11 @@
   <div id="packs">
     <div id="pkHead"><button id="pkBack" hidden>←</button><b id="pkTitle">🎁 ПАКИ</b><span id="pkSpores"></span><button id="pkClose">✕</button></div>
     <div id="pkBody"></div>
+  </div>
+
+  <div id="mut">
+    <div id="mtHead"><button id="mtBack" hidden>←</button><b id="mtTitle">🧬 МУТАЦИИ</b><button id="mtClose">✕</button></div>
+    <div id="mtBody"></div>
   </div>
 
   <div id="sheet">
@@ -1388,7 +1435,82 @@
           <button class="ghost" data-act="close">Отмена</button>
         </div>`);
     };
-    $("btnMut").onclick = () => alertMsg("Мутации скоро!");
+    // ---------- мутации ----------
+    let mutInfo = null, mutSel = [], mutBusy = false;
+    async function openMut() {
+      closeSheet(); closeShop(); closePacks();
+      $("mut").classList.add("open"); document.body.classList.add("inUp");
+      renderMutMenu();
+      try { mutInfo = await api("/api/mutate/info"); } catch (e) { toast("❌ " + e.message); }
+    }
+    function closeMut() { $("mut").classList.remove("open"); if (!$("upPage").classList.contains("open")) document.body.classList.remove("inUp"); }
+    function renderMutMenu() {
+      mutSel = []; $("mtBack").hidden = true; $("mtTitle").textContent = "🧬 МУТАЦИИ";
+      $("mtBody").innerHTML = `<button class="mtbtn" id="mtUp"><span class="ic">⚗️</span><span>Улучшение гриба<small>Сплавь несколько грибов в один редкостью выше</small></span></button>
+        <button class="mtbtn soon" id="mtGrow"><span class="ic">🌱</span><span>Выращивание грибов<small>Скоро</small></span></button>`;
+      $("mtUp").onclick = async () => { if (!mutInfo) { try { mutInfo = await api("/api/mutate/info"); } catch (e) { toast("❌ " + e.message); return; } } renderMutUpgrade(); };
+      $("mtGrow").onclick = () => toast("Скоро!");
+    }
+    const mutItem = (id) => state.inventory.items.find((x) => x.item === id);
+    function mutChance() { return mutInfo && mutSel.length >= mutInfo.min ? mutInfo.chances[mutSel.length] : 0; }
+    function renderMutUpgrade() {
+      $("mtBack").hidden = false; $("mtTitle").textContent = "⚗️ УЛУЧШЕНИЕ ГРИБА";
+      $("mtBody").innerHTML = `<div id="mtForge"><div id="mtIn"></div><div id="mtMid"></div><div id="mtOut"></div></div>
+        <div id="mtMsg"></div><button id="mtGo">Улучшить</button><div id="mtInvT">Твои грибы (нажми, чтобы положить)</div><div id="mtInv"></div>`;
+      $("mtGo").onclick = doMutate; drawMut();
+    }
+    function drawMut(keepOut) {
+      if (!$("mtIn")) return;
+      const first = mutSel.length ? mutItem(mutSel[0]) : null;
+      const nextName = first && mutInfo && mutInfo.next[first.rarity] ? mutInfo.names[mutInfo.ladder[mutInfo.ladder.indexOf(first.rarity) + 1]] : null;
+      const box = $("mtIn"); box.innerHTML = "";
+      for (let i = 0; i < 5; i++) {
+        const d = document.createElement("div"), m = mutSel[i] && mutItem(mutSel[i]);
+        d.className = "mtslot" + (m ? " full" : ""); if (m) { d.style.setProperty("--c", m.color); d.appendChild(icon(m)); d.onclick = () => { if (mutBusy) return; mutSel.splice(i, 1); drawMut(); }; }
+        box.appendChild(d);
+      }
+      const ch = mutChance();
+      $("mtMid").innerHTML = `<div class="arrow">➜</div>` + (mutSel.length >= (mutInfo ? mutInfo.min : 2) && nextName ? `<b>${ch}%</b>${nextName}` : (mutSel.length && !nextName ? "Выше некуда" : `Положи от ${mutInfo ? mutInfo.min : 2} до 5 грибов одной редкости`));
+      if (!keepOut) { $("mtOut").className = ""; $("mtOut").innerHTML = ""; }
+      $("mtGo").disabled = mutBusy || !(ch && nextName);
+      const inv = $("mtInv"); inv.innerHTML = "";
+      const items = state.inventory.items.slice().sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name));
+      items.forEach((m) => {
+        if (mutSel.includes(m.item)) return;
+        const ok = !first || (m.rarity === first.rarity);
+        const b = document.createElement("button"); b.className = "mcell" + (ok && mutInfo && mutInfo.next[m.rarity] ? "" : " dim"); b.style.setProperty("--c", m.color);
+        b.appendChild(icon(m));
+        b.onclick = () => {
+          if (mutBusy) return;
+          if (!mutInfo || !mutInfo.next[m.rarity]) { toast("Эту редкость улучшить нельзя"); return; }
+          if (!ok) { toast("Нужны грибы одной редкости"); return; }
+          if (mutSel.length >= mutInfo.max) { toast("Больше 5 нельзя"); return; }
+          mutSel.push(m.item); $("mtMsg").textContent = ""; drawMut();
+        };
+        inv.appendChild(b);
+      });
+      if (!items.length) inv.innerHTML = '<div class="muted">В инвентаре пусто</div>';
+    }
+    async function doMutate() {
+      if (mutBusy || mutSel.length < mutInfo.min) return;
+      mutBusy = true; $("mtGo").disabled = true; $("mtMsg").textContent = "";
+      $("mtOut").className = ""; $("mtOut").innerHTML = "";
+      let res;
+      try { while (syncing) await new Promise((q) => setTimeout(q, 50)); await sync(); res = await api("/api/mutate/upgrade", { items: mutSel }); }
+      catch (e) { mutBusy = false; drawMut(); toast("❌ " + e.message); return; }
+      $("mtIn").classList.add("shake"); try { tg.HapticFeedback.impactOccurred("medium"); } catch (_) {}
+      setTimeout(() => {
+        const mu = res.mutation; mutSel = []; applyState(res); mutBusy = false;
+        if (!$("mtIn")) return;
+        drawMut(true);
+        const out = $("mtOut"); out.innerHTML = ""; out.appendChild(icon(mu.mushroom)); out.className = mu.success ? "win" : "lose";
+        $("mtMsg").innerHTML = mu.success ? `✨ Удалось! Получен: <b>${mu.mushroom.name}</b>` : `Не вышло. Остался один гриб: <b>${mu.mushroom.name}</b>`;
+        try { tg.HapticFeedback.notificationOccurred(mu.success ? "success" : "warning"); } catch (_) {}
+      }, 800);
+    }
+    $("btnMut").onclick = openMut;
+    $("mtClose").onclick = closeMut;
+    $("mtBack").onclick = () => { if (!mutBusy) renderMutMenu(); };
     // ---------- паки ----------
     let packsData = null, packSel = null, packCount = 1, packBusy = false;
     const rarColor = (m) => `--c:${m.color}`;
@@ -1398,7 +1520,7 @@
       return pool[0].mushroom;
     }
     async function openPacks() {
-      closeSheet(); closeShop();
+      closeSheet(); closeShop(); closeMut();
       $("packs").classList.add("open"); document.body.classList.add("inUp");
       renderPacksList();
       try { packsData = await api("/api/packs"); renderPacksList(); } catch (e) { toast("❌ " + e.message); }
@@ -1820,7 +1942,7 @@
     }
     setInterval(passiveTick, 1000);
     let idleTicks = 0;
-    setInterval(() => {                                                    // связь с сервером,.
+    setInterval(() => {                                                    // связь с сервером
       idleTicks++;
       const wildDue = state && (state.wild || []).some((w) => w.ends_in - (Date.now() - stateAt) / 1000 <= 0);
       const wildWait = state && state.slots.some((x) => x.wild && x.unlocked && !x.mushroom) && idleTicks >= 4;
