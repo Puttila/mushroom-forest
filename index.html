@@ -62,6 +62,40 @@
                  border-radius: 12px; background: rgba(14,23,18,.94); border: 1px solid #c9a23a; box-shadow: 0 6px 18px rgba(0,0,0,.6); }
     #menuPanel.open { display: flex; }
     #menuPanel button { padding: 9px 14px; border-radius: 9px; border: 1px solid #4b6b50; background: #1d3325; color: #fff; font-size: 14px; text-align: left; }
+    .mdot { display: inline-block; width: 9px; height: 9px; margin-left: 6px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 6px #ff4d4d; vertical-align: middle; }
+    #menuBtn { overflow: visible; }
+    #menuBtn .mdot { position: absolute; right: -3px; top: -3px; margin: 0; }
+    #nav button.lockedNav .ic::after { content: "🔒"; position: absolute; font-size: 13px; margin: 14px 0 0 -8px; }
+    #nav button.lockedNav { filter: grayscale(.7) brightness(.8); }
+    /* ---------- почта ---------- */
+    #mail { position: fixed; inset: 0; z-index: 18; display: flex; flex-direction: column; background: radial-gradient(ellipse at 50% 0%, #4a3322, #261a12 70%);
+            transform: translateY(100%); visibility: hidden; transition: transform .3s ease, visibility 0s .3s; }
+    #mail.open { transform: none; visibility: visible; transition: transform .3s ease, visibility 0s; }
+    #mlHead { display: flex; align-items: center; gap: 10px; padding: 14px; }
+    #mlHead b { flex: 1; font-size: 18px; color: #ffd9a0; letter-spacing: .05em; }
+    #mlHead button { border: 1px solid #c9a23a; border-radius: 10px; background: rgba(0,0,0,.35); color: #ffe27a; padding: 7px 12px; font-size: 15px; }
+    #mlBody { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 24px; max-width: 520px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+    .env { display: flex; align-items: center; gap: 12px; width: 100%; margin: 8px 0; padding: 12px 14px; border-radius: 14px; text-align: left; color: #f5e6c8;
+           background: linear-gradient(160deg, #5c4330, #3a2a1d); border: 1px solid #7a5a3a; }
+    .env.unread { border-color: #ffd76a; box-shadow: 0 0 14px rgba(255,215,106,.35); }
+    .env .ei { font-size: 30px; }
+    .env .et { flex: 1; font-size: 15px; font-weight: bold; }
+    .env .et small { display: block; font-weight: normal; font-size: 11px; opacity: .7; margin-top: 2px; }
+    .env .gift { font-size: 20px; }
+    .paper { position: relative; margin: 6px 0 0; padding: 26px 20px 20px; border-radius: 6px; color: #4a3414; font-family: Georgia, "Times New Roman", serif;
+             background: repeating-linear-gradient(#f6e9c6 0 27px, #efdfb6 27px 28px); box-shadow: 0 10px 28px rgba(0,0,0,.55), inset 0 0 40px rgba(120,80,20,.25);
+             border: 1px solid #b89a5a; }
+    .paper h2 { margin: 0 0 12px; font-size: 21px; text-align: center; color: #5a2a14; }
+    .paper .txt { white-space: pre-wrap; font-size: 16px; line-height: 28px; }
+    .paper .sign { margin-top: 14px; text-align: right; font-style: italic; font-size: 15px; }
+    .paper .seal { position: absolute; right: 14px; top: -16px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 22px;
+                   background: radial-gradient(circle at 35% 30%, #d94a3a, #8a1d14); box-shadow: 0 3px 8px rgba(0,0,0,.5); }
+    .giftbox { margin-top: 16px; padding: 12px; border-radius: 10px; background: rgba(90,42,20,.1); border: 1px dashed #8a5a2a; text-align: center; }
+    .giftbox .gl { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; font-size: 17px; font-weight: bold; margin: 8px 0; }
+    .giftbox .gm { display: flex; align-items: center; gap: 4px; }
+    .giftbox .gm .ico { width: 40px; height: 40px; }
+    .giftbox button { padding: 11px 22px; border-radius: 12px; border: 2px solid #8a1d14; background: linear-gradient(#e8553f, #a82a1a); color: #fff; font-size: 16px; font-weight: bold; }
+    .giftbox button:disabled { opacity: .5; }
     body.inUp #menuBtn, body.inUp #menuPanel { display: none; }
     /* ---------- мутации ---------- */
     #mut { position: fixed; left: 0; top: 0; width: min(100vw, 520px); height: 100dvh; z-index: 17; display: flex; flex-direction: column;
@@ -420,7 +454,7 @@
       <div id="antiBar"></div>
     </div>
 
-    <div id="stage"><button id="menuBtn"><span>▾</span></button><div id="menuPanel"><button data-m="settings">⚙️ Настройки</button><button data-m="news">📰 Новости</button><button data-m="about">👤 Об авторе</button></div><div id="scene"><img id="meadow" src="assets/meadow.webp" alt="" draggable="false"></div></div>
+    <div id="stage"><button id="menuBtn"><span>▾</span><i class="mdot" id="menuDot" hidden></i></button><div id="menuPanel"><button data-m="settings">⚙️ Настройки</button><button data-m="mail">✉️ Почта<i class="mdot" id="mailDot" hidden></i></button><button data-m="news">📰 Новости</button><button data-m="about">👤 Об авторе</button></div><div id="scene"><img id="meadow" src="assets/meadow.webp" alt="" draggable="false"></div></div>
 
     <div id="nav">
       <button id="btnInv" title="Инвентарь"><span class="ic">🎒</span><span class="lb">Инвентарь</span></button>
@@ -439,6 +473,11 @@
   <div id="mut">
     <div id="mtHead"><button id="mtBack" hidden>←</button><b id="mtTitle">🧬 МУТАЦИИ</b><button id="mtClose">✕</button></div>
     <div id="mtBody"></div>
+  </div>
+
+  <div id="mail">
+    <div id="mlHead"><button id="mlBack" hidden>←</button><b id="mlTitle">✉️ ПОЧТА</b><button id="mlClose">✕</button></div>
+    <div id="mlBody"></div>
   </div>
 
   <div id="sheet">
@@ -641,6 +680,7 @@
     // по ним сервер отличает человека от автокликера. Пачка хранится, пока сервер её не подтвердит.
     const CLIENT_V = 2, MAX_BATCH = 200, MAX_TAP_LOG = 100;
     let outbox = null, tapLog = [], tapBase = null;
+    let xpClick = 1;
     const unsent = () => pending + (outbox ? outbox.clicks : 0);
     function newBid() {
       const a = new Uint8Array(8);
@@ -900,7 +940,9 @@
       passive = s.passive;
       dust = s.dust;
       spores = s.spores + unsent() * clickPower;       // + клики, сделанные пока шёл запрос
-      xp = s.xp + unsent();
+      xpClick = s.xp_click || 1;
+      xp = s.xp + unsent() * xpClick;
+      setMailBadge(s.mail_unread || 0); setNavLocks(s.unlocks);
       const sig = JSON.stringify(s.slots) + targetSlot;
       if (sig !== slotSig) { slotSig = sig; renderSlots(); }
       const isig = JSON.stringify(s.inventory) + s.level;
@@ -1518,7 +1560,56 @@
         try { tg.HapticFeedback.notificationOccurred(mu.success ? "success" : "warning"); } catch (_) {}
       }, 800);
     }
-    $("btnMut").onclick = openMut;
+    $("btnMut").onclick = () => { if (state && !state.unlocks.mutations) { showLockedCard("🧬 Мутации", "Откроются в древе улучшений (ветка «Другое», слева от центра)."); return; } openMut(); };
+    function showLockedCard(t, d) { showCard(`<div class="big">🔒 ${t}</div><div style="margin-top:8px">${d}</div><div class="btns"><button data-act="close">Понятно</button></div>`); }
+    function setNavLocks(u) { if (!u) return; $("btnPack").classList.toggle("lockedNav", !u.packs); $("btnMut").classList.toggle("lockedNav", !u.mutations); }
+    // ---------- почта ----------
+    let mailLetters = [];
+    function setMailBadge(n) { $("mailDot").hidden = $("menuDot").hidden = !n; }
+    async function openMail() {
+      closeSheet(); closeShop();
+      $("mail").classList.add("open"); document.body.classList.add("inUp");
+      try { mailLetters = (await api("/api/mail")).letters; } catch (e) { toast("❌ " + e.message); }
+      renderMailList();
+    }
+    function closeMail() { $("mail").classList.remove("open"); if (!$("upPage").classList.contains("open")) document.body.classList.remove("inUp"); }
+    function renderMailList() {
+      $("mlBack").hidden = true; $("mlTitle").textContent = "✉️ ПОЧТА";
+      const b = $("mlBody"); b.innerHTML = "";
+      if (!mailLetters.length) { b.innerHTML = '<div class="pksoon" style="margin-top:30px">📭 Писем пока нет</div>'; return; }
+      mailLetters.forEach((l) => {
+        const e = document.createElement("button"), unread = !l.read || (l.gifts && !l.claimed);
+        e.className = "env" + (unread ? " unread" : "");
+        e.innerHTML = `<span class="ei">${l.read ? "📭" : "✉️"}</span><span class="et"></span><span class="gift">${l.gifts && !l.claimed ? "🎁" : ""}</span>`;
+        e.querySelector(".et").textContent = l.title;
+        e.querySelector(".et").insertAdjacentHTML("beforeend", `<small>${l.sender} · ${new Date(l.created * 1000).toLocaleDateString("ru-RU")}</small>`);
+        e.onclick = () => renderLetter(l);
+        b.appendChild(e);
+      });
+    }
+    function renderLetter(l) {
+      $("mlBack").hidden = false; $("mlTitle").textContent = "✉️ ПИСЬМО";
+      const b = $("mlBody"); b.innerHTML = '<div class="paper"><div class="seal">🍄</div><h2></h2><div class="txt"></div><div class="sign"></div></div>';
+      b.querySelector("h2").textContent = l.title; b.querySelector(".txt").textContent = l.body; b.querySelector(".sign").textContent = "— " + l.sender;
+      if (l.gifts) {
+        const g = l.gifts, box = document.createElement("div"); box.className = "giftbox";
+        const list = document.createElement("div"); list.className = "gl";
+        if (g.spores) list.insertAdjacentHTML("beforeend", `<span>🌱 ${fmt(g.spores)}</span>`);
+        if (g.dust) list.insertAdjacentHTML("beforeend", `<span>✨ ${fmt(g.dust)}</span>`);
+        g.mushrooms.forEach((x) => { const d = document.createElement("span"); d.className = "gm"; d.appendChild(icon(x.mushroom)); d.insertAdjacentText("beforeend", "×" + x.count); d.title = x.mushroom.name; list.appendChild(d); });
+        box.insertAdjacentHTML("beforeend", "<div>🎁 Подарок</div>"); box.appendChild(list);
+        const btn = document.createElement("button"); btn.textContent = l.claimed ? "Подарок получен ✔" : "Забрать подарок"; btn.disabled = l.claimed;
+        btn.onclick = async () => {
+          btn.disabled = true;
+          try { const res = await api("/api/mail/claim", { id: l.id }); applyState(res); l.claimed = true; l.read = true; toast("🎁 Подарок получен!"); renderLetter(l); }
+          catch (e) { btn.disabled = false; toast("❌ " + e.message); }
+        };
+        box.appendChild(btn); b.querySelector(".paper").appendChild(box);
+      }
+      if (!l.read) { l.read = true; api("/api/mail/read", { id: l.id }).then((r) => setMailBadge(r.mail_unread)).catch(() => {}); }
+    }
+    $("mlClose").onclick = closeMail;
+    $("mlBack").onclick = renderMailList;
     $("mtClose").onclick = closeMut;
     $("mtBack").onclick = () => { if (!mutBusy) renderMutMenu(); };
     // ---------- паки ----------
@@ -1619,7 +1710,7 @@
         packBusy = false; if (packSel) drawPackButtons();
       }, 4400);
     }
-    $("btnPack").onclick = openPacks;
+    $("btnPack").onclick = () => { if (state && !state.unlocks.packs) { showLockedCard("📦 Паки", "Откроются в древе улучшений (ветка «Другое», слева от центра)."); return; } openPacks(); };
     $("pkClose").onclick = closePacks;
     $("pkBack").onclick = () => { if (!packBusy) renderPacksList(); };
 
@@ -1806,7 +1897,7 @@
         tapEntry.set(e.pointerId, [entry, e.timeStamp]);        // длительность нажатия допишем, когда палец поднимется
       }
       spores += clickPower;
-      xp += 1;
+      xp += xpClick;
       pending++;
       if (!renderQueued) { renderQueued = true; requestAnimationFrame(() => { renderQueued = false; render(); }); }
 
@@ -1913,9 +2004,10 @@
       const setOpen = (on) => { panel.classList.toggle("open", on); btn.classList.toggle("open", on); };
       btn.onclick = () => setOpen(!panel.classList.contains("open"));
       document.addEventListener("pointerdown", (e) => { if (!e.target.closest("#menuBtn, #menuPanel")) setOpen(false); }, true);
+      panel.querySelector('[data-m="mail"]').addEventListener("click", (e) => { e.stopPropagation(); setOpen(false); openMail(); }, true);
       const TXT = { settings: ["⚙️ Настройки", "Здесь скоро появятся настройки игры."], news: ["📰 Новости", "Пока новостей нет."], about: ["👤 Об авторе", "Игра «Грибной лес» делается с любовью. Скоро здесь будет рассказ об авторе."] };
       panel.addEventListener("click", (e) => {
-        const b = e.target.closest("button"); if (!b) return;
+        const b = e.target.closest("button"); if (!b || b.dataset.m === "mail") return;
         setOpen(false);
         const [t, d] = TXT[b.dataset.m];
         showCard(`<div class="big">${t}</div><div style="margin-top:8px">${d}</div><div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`);
@@ -1959,7 +2051,7 @@
     }
     setInterval(passiveTick, 1000);
     let idleTicks = 0;
-    setInterval(() => {                                                    // связь с сервером,
+    setInterval(() => {                                                    // связь с сервером
       idleTicks++;
       const wildDue = state && (state.wild || []).some((w) => w.ends_in - (Date.now() - stateAt) / 1000 <= 0);
       const wildWait = state && state.slots.some((x) => x.wild && x.unlocked && !x.mushroom) && idleTicks >= 4;
