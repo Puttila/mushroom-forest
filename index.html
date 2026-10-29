@@ -128,7 +128,6 @@
     #mtOut.win { animation: mtWin 1s ease-out; box-shadow: 0 0 26px #ffd76a; border-color: #ffd76a; }
     #mtOut.lose { box-shadow: 0 0 16px #ff6a6a; border-color: #b05050; }
     @keyframes mtWin { 0% { transform: scale(.6); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
-    #mtIn.shake .mtslot { animation: mtShake .12s linear 6; }
     @keyframes mtShake { 25% { transform: translate(-2px, 1px) rotate(-4deg); } 75% { transform: translate(2px, -1px) rotate(4deg); } }
     #mtGo { width: 100%; padding: 13px; margin: 10px 0 4px; border-radius: 14px; border: 2px solid #9bf0a8; font-size: 17px; font-weight: bold;
             color: #052010; background: linear-gradient(#aaf5b4, #47c05a); }
@@ -193,6 +192,13 @@
     .pkrow .nm small { display: block; font-size: 11px; opacity: .75; }
     .pkrow .ch { font-weight: bold; color: #ffe27a; }
     .pklist h4 { margin: 12px 0 4px; font-size: 13px; opacity: .8; text-transform: uppercase; letter-spacing: .08em; }
+    .setrow { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; font-size: 15px; }
+    .setrow span { width: 96px; flex: none; }
+    .setrow input[type=range] { flex: 1; accent-color: #47c05a; height: 28px; }
+    .setrow b { width: 46px; text-align: right; font-size: 13px; opacity: .85; }
+    #mtForge.charging { animation: mtCharge var(--mt, 3s) ease-in forwards; }
+    @keyframes mtCharge { 0% { box-shadow: 0 0 0 rgba(155,240,168,0); border-color: #2f6b47; } 100% { box-shadow: 0 0 46px rgba(155,240,168,.85); border-color: #9bf0a8; } }
+    #mtIn.shake .mtslot { animation: mtShake .1s linear infinite; }
     .cost { position: absolute; top: 134%; left: 50%; transform: translateX(-50%); font-size: 11px;
             white-space: nowrap; color: #ffb4b4; background: rgba(0,0,0,.55); border-radius: 6px; padding: 1px 6px; }
     .cost.ok { color: #9dff9d; }
@@ -541,11 +547,138 @@
 
   <script>
     const tg = window.Telegram.WebApp;
+    try {                                                    // Телеграм свернули/развернули: музыка на паузу и обратно
+      const vis = (on) => (on ? Snd.resume() : Snd.pause());
+      tg.onEvent("visibilityChanged", (d) => { const v = d && (d.is_visible !== undefined ? d.is_visible : d.isVisible); vis(v !== false); });
+      tg.onEvent("deactivated", () => vis(false)); tg.onEvent("activated", () => vis(true));
+    } catch (_) {}
     tg.ready();
     tg.expand();
     if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
 
     const $ = (id) => document.getElementById(id);
+
+    // ---------- звук и музыка ----------
+    // Файлы лежат в assets/sounds/. Нет файла: просто тишина, игра не ломается.
+    const Snd = (() => {
+      const DIR = "assets/sounds/";
+      const FILES = { click_1: "click_1.wav", click_2: "click_2.wav", ui_tap: "ui_tap.wav", ui_open: "ui_open.wav", ui_close: "ui_close.wav",
+        buy: "buy.mp3", sell: "sell.mp3", plant: "plant.wav", pack_spin: "pack_spin.mp3", pack_win: "pack_win.mp3", pack_big_win: "pack_big_win.mp3",
+        mutate_start: "mutate_start.mp3", mutate_success: "mutate_success.mp3", mutate_fail: "mutate_fail.mp3", level_up: "level_up.mp3", error: "error.mp3" };
+      // подгонка громкости каждого звука (1 = как в файле; mutate_start и plant в файлах очень тихие)
+      const GAIN = { click_1: 0.8, click_2: 0.8, ui_tap: 0.9, ui_open: 0.9, ui_close: 0.9, buy: 1, sell: 1, plant: 2.8, pack_spin: 1.4, pack_win: 1,
+        pack_big_win: 1, mutate_start: 6, mutate_success: 1, mutate_fail: 1, level_up: 1, error: 1 };
+      const MIN_GAP = { click_1: 0, click_2: 0, ui_tap: 40, ui_open: 60, ui_close: 60, error: 250, plant: 80, buy: 80, sell: 80 };   // мс между одинаковыми звуками
+      const MUSIC = ["music_main_1.mp3", "music_main_2.mp3", "music_main_3.mp3"];
+      const MUSIC_GAIN = [0.85, 1.0, 1.4];          // выравниваем громкость треков друг с другом
+      const MUSIC_MAX = 0.6;                         // громкость музыки при ползунке на 100%
+      const V = { music: 40, sfx: 100 };            // громкость по умолчанию, %
+      try { const o = JSON.parse(localStorage.getItem("snd") || "{}"); if (Number.isFinite(o.m)) V.music = Math.min(100, Math.max(0, o.m)); if (Number.isFinite(o.s)) V.sfx = Math.min(100, Math.max(0, o.s)); } catch (_) {}
+      const AC = window.AudioContext || window.webkitAudioContext;
+      let ctx = null, sfxBus, musBus, duck, comp, music = null, trackGain, mi = 0, musicErr = 0, wantMusic = true, active = 0;
+      const bufs = {}, audible = {}, lastAt = {};
+
+      function applyVol() {
+        if (!ctx) return;
+        const t = ctx.currentTime;
+        sfxBus.gain.setTargetAtTime(V.sfx / 100, t, 0.02);
+        musBus.gain.setTargetAtTime(V.music / 100 * MUSIC_MAX, t, 0.05);
+      }
+      // сколько секунд звук реально слышен (без тишины в хвосте): по этому времени подгоняем анимации
+      function audibleEnd(buf) {
+        let end = 0;
+        for (let c = 0; c < buf.numberOfChannels; c++) {
+          const d = buf.getChannelData(c);
+          for (let i = d.length - 1; i >= end * buf.sampleRate; i--) if (Math.abs(d[i]) > 0.003) { end = Math.max(end, i / buf.sampleRate); break; }
+        }
+        return end || buf.duration;
+      }
+      function load(name) {
+        fetch(DIR + FILES[name]).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+          .then((ab) => new Promise((ok, bad) => { const p = ctx.decodeAudioData(ab, ok, bad); if (p && p.catch) p.catch(bad); }))
+          .then((b) => { bufs[name] = b; audible[name] = audibleEnd(b); })
+          .catch(() => {});
+      }
+      function startTrack() {
+        if (!music) return;
+        music.src = DIR + MUSIC[mi];
+        const t = ctx.currentTime;
+        trackGain.gain.cancelScheduledValues(t); trackGain.gain.setValueAtTime(0, t); trackGain.gain.linearRampToValueAtTime(MUSIC_GAIN[mi], t + 2);
+        if (wantMusic && V.music > 0 && !document.hidden) { const p = music.play(); if (p && p.catch) p.catch(() => {}); }
+      }
+      function init() {
+        if (ctx || !AC) return;
+        try { ctx = new AC(); } catch (_) { ctx = null; return; }
+        comp = ctx.createDynamicsCompressor();       // защита от хруста, если звуки наложатся
+        comp.threshold.value = -8; comp.knee.value = 10; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
+        comp.connect(ctx.destination);
+        sfxBus = ctx.createGain(); sfxBus.connect(comp);
+        duck = ctx.createGain(); duck.connect(comp);            // приглушение музыки на время больших звуков
+        musBus = ctx.createGain(); musBus.connect(duck);
+        applyVol();
+        Object.keys(FILES).forEach(load);
+        try {
+          music = new Audio(); music.preload = "auto";
+          const src = ctx.createMediaElementSource(music);
+          trackGain = ctx.createGain(); src.connect(trackGain); trackGain.connect(musBus);
+          music.addEventListener("ended", () => { mi = (mi + 1) % MUSIC.length; musicErr = 0; startTrack(); });
+          music.addEventListener("error", () => { if (++musicErr < MUSIC.length) { mi = (mi + 1) % MUSIC.length; startTrack(); } });
+          startTrack();
+        } catch (_) { music = null; }
+      }
+      function unlock() {
+        init();
+        if (ctx && ctx.state !== "running") ctx.resume().catch(() => {});
+        if (music && music.paused && wantMusic && V.music > 0 && !document.hidden && music.src) { const p = music.play(); if (p && p.catch) p.catch(() => {}); }
+      }
+      function play(name, o) {
+        o = o || {};
+        if (!ctx || !bufs[name] || V.sfx <= 0) return null;
+        const now = performance.now();
+        if (now - (lastAt[name] || 0) < (MIN_GAP[name] || 0)) return null;
+        lastAt[name] = now;
+        if (active > 14) return null;                                    // не больше 14 звуков одновременно
+        if (ctx.state !== "running") ctx.resume().catch(() => {});
+        const src = ctx.createBufferSource(); src.buffer = bufs[name];
+        const g = ctx.createGain(); g.gain.value = (GAIN[name] || 1) * (o.vol || 1);
+        src.connect(g); g.connect(sfxBus); active++;
+        src.onended = () => { active--; try { g.disconnect(); } catch (_) {} };
+        src.start();
+        return { stop(fade) {
+          fade = fade || 0.1;
+          try { const t = ctx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + fade); src.stop(t + fade + 0.02); } catch (_) {}
+        } };
+      }
+      return {
+        unlock,
+        play,
+        click() { return play(Math.random() < 0.5 ? "click_1" : "click_2"); },   // два звука клика вперемешку
+        dur(name, fallback) { return audible[name] || fallback; },                // сколько секунд звучит файл
+        duckFor(sec, level) {
+          if (!ctx) return;
+          level = level || 0.35;
+          const t = ctx.currentTime;
+          duck.gain.cancelScheduledValues(t); duck.gain.setValueAtTime(duck.gain.value, t);
+          duck.gain.linearRampToValueAtTime(level, t + 0.2); duck.gain.setValueAtTime(level, t + sec); duck.gain.linearRampToValueAtTime(1, t + sec + 0.8);
+        },
+        vol: V,
+        loaded() { return Object.keys(bufs).sort(); },
+        playing() { return { ctx: ctx && ctx.state, music: !!music && !music.paused, track: mi }; },
+        setVol(kind, v, save) {
+          V[kind] = Math.min(100, Math.max(0, v)); applyVol();
+          if (kind === "music" && music) { if (V.music <= 0) music.pause(); else unlock(); }
+          if (save) { try { localStorage.setItem("snd", JSON.stringify({ m: V.music, s: V.sfx })); } catch (_) {} }
+        },
+        next() { if (!music) return; mi = (mi + 1) % MUSIC.length; musicErr = 0; startTrack(); },
+        pause() { if (music) music.pause(); if (ctx && ctx.state === "running") ctx.suspend().catch(() => {}); },
+        resume() { if (ctx) ctx.resume().catch(() => {}); if (music && wantMusic && V.music > 0 && music.paused && music.src) { const p = music.play(); if (p && p.catch) p.catch(() => {}); } },
+      };
+    })();
+    ["pointerdown", "touchend", "keydown"].forEach((ev) => document.addEventListener(ev, () => Snd.unlock(), { capture: true, passive: true }));
+    document.addEventListener("visibilitychange", () => { if (document.hidden) Snd.pause(); else Snd.resume(); });
+    window.addEventListener("pagehide", () => Snd.pause());
+    window.addEventListener("pageshow", () => Snd.resume());
+
     const scene = $("scene"), stage = $("stage");
     const SCENE_RATIO = 1102 / 682;      // ширина / высота картинки поляны (meadow.webp)
     $("meadow").onerror = () => { $("meadow").remove(); scene.classList.add("nomeadow"); };
@@ -578,9 +711,10 @@
       return [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60]
         .map((v) => String(v).padStart(2, "0")).join(":");
     };
-    function alertMsg(t) { try { tg.showAlert(t); } catch (_) { alert(t); } }
+    function alertMsg(t) { Snd.play("error"); try { tg.showAlert(t); } catch (_) { alert(t); } }
     let toastTimer = null;
     function toast(t) {
+      if (/^(❌|Не хватает|Нужен уровень|Нужны грибы|Эту редкость|Больше 5)/.test(t)) Snd.play("error");
       $("toast").textContent = t;
       $("toast").classList.add("show");
       clearTimeout(toastTimer);
@@ -774,6 +908,8 @@
     });
 
     // действие, которое меняет состояние (купить, поставить, продать…)
+    const ACT_SND = { "/api/place": "plant", "/api/sell": "sell", "/api/sell_bulk": "sell", "/api/shop/buy": "buy", "/api/auction/buy": "buy",
+                      "/api/unlock": "buy", "/api/buy_tab": "buy", "/api/upgrade/buy": "buy", "/api/auction/refresh": "buy" };
     async function act(path, body, okText) {
       if (busy) return false;
       busy = true;
@@ -788,6 +924,7 @@
         closeCard();
         if (okText) toast(okText);
         try { tg.HapticFeedback.notificationOccurred("success"); } catch (_) {}
+        if (ACT_SND[path]) Snd.play(ACT_SND[path]);
         ok = true;
       } catch (e) {
         alertMsg(e.message);
@@ -938,6 +1075,7 @@
     }
 
     let stateAt = Date.now();
+    let lastLevel = 0, wildSeen = null;
     function applyState(s) {
       state = s;
       stateAt = Date.now();
@@ -948,6 +1086,11 @@
       xpClick = s.xp_click || 1;
       xp = s.xp + unsent() * xpClick;
       setMailBadge(s.mail_unread || 0); setNavLocks(s.unlocks);
+      if (lastLevel && s.level > lastLevel) { Snd.play("level_up"); Snd.duckFor(2.5, 0.5); }
+      lastLevel = s.level;
+      const wsig = s.slots.map((x, i) => (x.wild && x.mushroom ? i : -1)).filter((i) => i >= 0);
+      if (wildSeen && wsig.some((i) => !wildSeen.includes(i))) Snd.play("plant");          // в диком слоте появился гриб
+      wildSeen = wsig;
       const sig = JSON.stringify(s.slots) + targetSlot;
       if (sig !== slotSig) { slotSig = sig; renderSlots(); }
       const isig = JSON.stringify(s.inventory) + s.level;
@@ -1493,7 +1636,7 @@
       renderMutMenu();
       try { mutInfo = await api("/api/mutate/info"); } catch (e) { toast("❌ " + e.message); }
     }
-    function closeMut() { $("mut").classList.remove("open"); if (!$("upPage").classList.contains("open")) document.body.classList.remove("inUp"); }
+    function closeMut() { if (mutSnd) { mutSnd.stop(0.2); mutSnd = null; } $("mut").classList.remove("open"); if (!$("upPage").classList.contains("open")) document.body.classList.remove("inUp"); }
     function renderMutMenu() {
       clearInterval(mutGhostTimer); mutSel = []; $("mtBack").hidden = true; $("mtTitle").textContent = "🧬 МУТАЦИИ";
       $("mtBody").innerHTML = `<button class="mtbtn" id="mtUp"><span class="ic">⚗️</span><span>Улучшение гриба<small>Сплавь несколько грибов в один редкостью выше</small></span></button>
@@ -1548,26 +1691,47 @@
       });
       if (!items.length) inv.innerHTML = '<div class="muted">В инвентаре пусто</div>';
     }
+    let mutSnd = null;
     async function doMutate() {
       if (mutBusy || mutSel.length < mutInfo.min) return;
       mutBusy = true; clearInterval(mutGhostTimer); $("mtGo").disabled = true; $("mtMsg").textContent = "";
       $("mtOut").className = ""; $("mtOut").innerHTML = "";
+      const MUT_MS = Math.round(Snd.dur("mutate_start", 2.9) * 1000) + 100;     // превращение длится ровно столько, сколько звучит mutate_start
+      const t0 = performance.now();
+      mutSnd = Snd.play("mutate_start"); Snd.duckFor(MUT_MS / 1000 + 0.3, 0.3);
+      $("mtForge").style.setProperty("--mt", MUT_MS + "ms"); $("mtForge").classList.add("charging"); $("mtIn").classList.add("shake");
+      try { tg.HapticFeedback.impactOccurred("medium"); } catch (_) {}
+      const stopAnim = () => { const f = $("mtForge"), i = $("mtIn"); if (f) f.classList.remove("charging"); if (i) i.classList.remove("shake"); };
       let res;
       try { while (syncing) await new Promise((q) => setTimeout(q, 50)); await sync(); res = await api("/api/mutate/upgrade", { items: mutSel }); }
-      catch (e) { mutBusy = false; drawMut(); toast("❌ " + e.message); return; }
-      $("mtIn").classList.add("shake"); try { tg.HapticFeedback.impactOccurred("medium"); } catch (_) {}
-      setTimeout(() => {
-        const mu = res.mutation; mutSel = []; applyState(res); mutBusy = false;
-        if (!$("mtIn")) return;
-        drawMut(true);
-        const out = $("mtOut"); out.innerHTML = ""; out.appendChild(icon(mu.mushroom)); out.className = mu.success ? "win" : "lose";
-        $("mtMsg").innerHTML = mu.success ? `✨ Удалось! Получен: <b>${mu.mushroom.name}</b>` : `Не вышло. Остался один гриб: <b>${mu.mushroom.name}</b>`;
-        try { tg.HapticFeedback.notificationOccurred(mu.success ? "success" : "warning"); } catch (_) {}
-      }, 800);
+      catch (e) { if (mutSnd) mutSnd.stop(0.15); stopAnim(); mutBusy = false; drawMut(); toast("❌ " + e.message); return; }
+      const left = MUT_MS - (performance.now() - t0);
+      if (left > 0) await new Promise((q) => setTimeout(q, left));
+      stopAnim(); mutSnd = null;
+      const mu = res.mutation; mutSel = []; applyState(res); mutBusy = false;
+      if (!$("mtIn")) return;
+      drawMut(true);
+      const out = $("mtOut"); out.innerHTML = ""; out.appendChild(icon(mu.mushroom)); out.className = mu.success ? "win" : "lose";
+      $("mtMsg").innerHTML = mu.success ? `✨ Удалось! Получен: <b>${mu.mushroom.name}</b>` : `Не вышло. Остался один гриб: <b>${mu.mushroom.name}</b>`;
+      if ($("mut").classList.contains("open")) { Snd.play(mu.success ? "mutate_success" : "mutate_fail"); if (mu.success) Snd.duckFor(Snd.dur("mutate_success", 5.5), 0.3); }
+      try { tg.HapticFeedback.notificationOccurred(mu.success ? "success" : "warning"); } catch (_) {}
     }
     $("btnMut").onclick = () => { if (state && !state.unlocks.mutations) { showLockedCard("🧬 Мутации", "Откроются в древе улучшений (ветка «Другое», слева от центра)."); return; } openMut(); };
     function showLockedCard(t, d) { showCard(`<div class="big">🔒 ${t}</div><div style="margin-top:8px">${d}</div><div class="btns"><button data-act="close">Понятно</button></div>`); }
     function setNavLocks(u) { if (!u) return; $("btnPack").classList.toggle("lockedNav", !u.packs); $("btnMut").classList.toggle("lockedNav", !u.mutations); }
+    function showSettings() {
+      showCard(`<div class="big">⚙️ Настройки</div>
+        <div class="setrow"><span>🎵 Музыка</span><input type="range" id="setMusic" min="0" max="100" step="1"><b id="setMusicV"></b></div>
+        <div class="setrow"><span>🔊 Звуки</span><input type="range" id="setSfx" min="0" max="100" step="1"><b id="setSfxV"></b></div>
+        <div class="btns"><button class="ghost" id="setNext">⏭ Трек</button><button data-act="close">Готово</button></div>`);
+      const bind = (id, kind) => {
+        const el = $(id), out = $(id + "V"); el.value = Snd.vol[kind]; out.textContent = Snd.vol[kind] + "%";
+        el.oninput = () => { Snd.setVol(kind, Number(el.value), false); out.textContent = el.value + "%"; };
+        el.onchange = () => { Snd.setVol(kind, Number(el.value), true); if (kind === "sfx") Snd.play("buy"); };
+      };
+      bind("setMusic", "music"); bind("setSfx", "sfx");
+      $("setNext").onclick = () => Snd.next();
+    }
     // ---------- почта ----------
     let mailLetters = [];
     function setMailBadge(n) { $("mailDot").hidden = $("menuDot").hidden = !n; }
@@ -1631,7 +1795,7 @@
       renderPacksList();
       try { packsData = await api("/api/packs"); renderPacksList(); } catch (e) { toast("❌ " + e.message); }
     }
-    function closePacks() { $("packs").classList.remove("open"); if (!$("upPage").classList.contains("open")) document.body.classList.remove("inUp"); }
+    function closePacks() { if (packSpinSnd) { packSpinSnd.stop(0.2); packSpinSnd = null; } $("packs").classList.remove("open"); if (!$("upPage").classList.contains("open")) document.body.classList.remove("inUp"); }
     function renderPacksList() {
       packSel = null; $("pkBack").hidden = true; $("pkTitle").textContent = "🎁 ПАКИ";
       $("pkSpores").textContent = "🌱 " + fmt(spores);
@@ -1689,6 +1853,8 @@
       const o = $("pkOpen"); o.disabled = packBusy; o.innerHTML = `Открыть ×${packCount} · 🌱 ${fmt(pk.cost * packCount)}`;
       $("pkSpores").textContent = "🌱 " + fmt(spores);
     }
+    let packSpinSnd = null;
+    const BIG_WIN_RANK = 4;                       // с какой редкости играет большой звук: 4 = эпический и выше
     async function doOpenPack() {
       if (packBusy || !packSel) return;
       const pk = packSel;
@@ -1699,8 +1865,10 @@
       catch (e) { packBusy = false; drawPackButtons(); toast("❌ " + e.message); return; }
       const win = res.results[0], WIN = fillStrip(pk, win), tr = $("pkTrack");
       const box = $("pkRoulette").clientWidth, off = (Math.random() - .5) * 60;
+      const ROUL = Math.round(Snd.dur("pack_spin", 3.85) * 1000);            // рулетка крутится ровно столько, сколько звучит pack_spin
+      packSpinSnd = Snd.play("pack_spin"); Snd.duckFor(ROUL / 1000 + 0.3, 0.35);
       void tr.offsetWidth;
-      tr.style.transition = "transform 4.2s cubic-bezier(.12,.62,.08,1)";
+      tr.style.transition = `transform ${ROUL}ms cubic-bezier(.12,.62,.08,1)`;
       tr.style.transform = `translateX(${-(WIN * 92 + 46 + off - box / 2)}px)`;
       try { tg.HapticFeedback.impactOccurred("medium"); } catch (_) {}
       setTimeout(() => {
@@ -1714,7 +1882,11 @@
           out.innerHTML = '<div class="grid5">' + res.results.map((m) => `<div class="res" style="${rarColor(m)}" title="${m.name}">${iconHtml(m)}</div>`).join("") + "</div>";
         }
         packBusy = false; if (packSel) drawPackButtons();
-      }, 4400);
+        if ($("packs").classList.contains("open")) {
+          const best = Math.max(...res.results.map((m) => m.rank));
+          if (best >= BIG_WIN_RANK) { Snd.play("pack_big_win"); Snd.duckFor(Snd.dur("pack_big_win", 3.2), 0.3); } else Snd.play("pack_win");
+        }
+      }, ROUL + 60);
     }
     $("btnPack").onclick = () => { if (state && !state.unlocks.packs) { showLockedCard("📦 Паки", "Откроются в древе улучшений (ветка «Другое», слева от центра)."); return; } openPacks(); };
     $("pkClose").onclick = closePacks;
@@ -1829,6 +2001,7 @@
       });
     }
     function showUpgrade(n) {
+      Snd.play("ui_tap");
       const owned = upOwned(), isOwned = owned.has(n.id), par = upData.nodes.find((x) => x.id === n.parent);
       const enough = spores >= n.cost.spores && dust >= n.cost.dust;
       let btn;
@@ -1902,6 +2075,7 @@
         tapLog.push(entry);
         tapEntry.set(e.pointerId, [entry, e.timeStamp]);        // длительность нажатия допишем, когда палец поднимется
       }
+      Snd.click();
       spores += clickPower;
       xp += xpClick;
       pending++;
@@ -2003,6 +2177,25 @@
       scenePointer = null;
       held = false;
     });
+    // ---------- звуки интерфейса: нажатия и открытие/закрытие окон ----------
+    (function () {
+      const NO_TAP = new Set(["pkOpen", "mtGo"]);                                  // у этих кнопок свои звуки
+      document.addEventListener("pointerdown", (e) => {
+        if (!e.isTrusted || !e.target.closest) return;
+        const b = e.target.closest("button, .env, .pkcard, .mcell, .cell[data-item]");
+        if (!b || b.disabled || NO_TAP.has(b.id) || b.classList.contains("unode")) return;
+        Snd.play("ui_tap");
+      }, true);
+      let ev = 0, timer = 0;
+      const note = (open) => { ev = open ? 1 : (ev || -1); clearTimeout(timer); timer = setTimeout(() => { Snd.play(ev > 0 ? "ui_open" : "ui_close"); ev = 0; }, 30); };
+      const was = new Map();
+      const mo = new MutationObserver((list) => {
+        for (const m of list) { const now = m.target.classList.contains("open"); if (was.get(m.target) !== now) { was.set(m.target, now); note(now); } }
+      });
+      ["sheet", "shop", "packs", "mut", "mail", "upPage"].forEach((id) => { const el = $(id); was.set(el, el.classList.contains("open")); mo.observe(el, { attributes: true, attributeFilter: ["class"] }); });
+      const info = $("info"); let infoOpen = !info.hidden;
+      new MutationObserver(() => { const o = !info.hidden; if (o !== infoOpen) { infoOpen = o; note(o); } }).observe(info, { attributes: true, attributeFilter: ["hidden"] });
+    })();
     // маленькое меню (стрелочка слева сверху)
     (function () {
       const btn = $("menuBtn"), panel = $("menuPanel");
@@ -2015,6 +2208,7 @@
       panel.addEventListener("click", (e) => {
         const b = e.target.closest("button"); if (!b || b.dataset.m === "mail") return;
         setOpen(false);
+        if (b.dataset.m === "settings") { showSettings(); return; }
         const [t, d] = TXT[b.dataset.m];
         showCard(`<div class="big">${t}</div><div style="margin-top:8px">${d}</div><div class="btns"><button class="ghost" data-act="close">Закрыть</button></div>`);
       });
