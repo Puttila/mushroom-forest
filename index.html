@@ -62,6 +62,7 @@
                  border-radius: 12px; background: rgba(14,23,18,.94); border: 1px solid #c9a23a; box-shadow: 0 6px 18px rgba(0,0,0,.6); }
     #menuPanel.open { display: flex; }
     #menuPanel button { padding: 9px 14px; border-radius: 9px; border: 1px solid #4b6b50; background: #1d3325; color: #fff; font-size: 14px; text-align: left; }
+    .mdot[hidden] { display: none !important; }
     .mdot { display: inline-block; width: 9px; height: 9px; margin-left: 6px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 6px #ff4d4d; vertical-align: middle; }
     #menuBtn { overflow: visible; }
     #menuBtn .mdot { position: absolute; right: -3px; top: -3px; margin: 0; }
@@ -1008,10 +1009,12 @@
           el.classList.add("empty");
           if (s.wild) el.classList.add("wild");
           if (i === targetSlot) el.classList.add("target");
-          const plus = document.createElement("div");
-          plus.className = "plus";
-          plus.textContent = "+";
-          el.appendChild(plus);
+          if (!s.wild) {                                         // в дикую ячейку нельзя посадить самому: плюса нет
+            const plus = document.createElement("div");
+            plus.className = "plus";
+            plus.textContent = "+";
+            el.appendChild(plus);
+          }
         } else {
           el.classList.add("filled");
           if (s.wild) el.classList.add("wild");
@@ -1869,7 +1872,8 @@
       packSpinSnd = Snd.play("pack_spin"); Snd.duckFor(ROUL / 1000 + 0.3, 0.35);
       void tr.offsetWidth;
       tr.style.transition = `transform ${ROUL}ms cubic-bezier(.12,.62,.08,1)`;
-      tr.style.transform = `translateX(${-(WIN * 92 + 46 + off - box / 2)}px)`;
+      const wi = tr.children[WIN], spread = wi.offsetWidth * 0.3;                // останавливаемся строго внутри выпавшей иконки
+      tr.style.transform = `translateX(${-(wi.offsetLeft + wi.offsetWidth / 2 + Math.max(-spread, Math.min(spread, off)) - box / 2)}px)`;
       try { tg.HapticFeedback.impactOccurred("medium"); } catch (_) {}
       setTimeout(() => {
         applyState(res);
@@ -2055,12 +2059,6 @@
 
     // ---------- клики по поляне ----------
     const downAt = new Map();                          // когда палец/кнопка опустились (для длительности нажатия)
-    // клики считаются только внутри овала поляны (по прозрачной картинке meadow.webp: центр 50,5% x 50%, радиусы 49,5% x 50%)
-    function inMeadow(e) {
-      const r = scene.getBoundingClientRect();
-      const dx = ((e.clientX - r.left) / r.width - 0.505) / 0.495, dy = ((e.clientY - r.top) / r.height - 0.5) / 0.5;
-      return dx * dx + dy * dy <= 1.12;
-    }
     let renderQueued = false;
     const tapEntry = new Map();
     function doClick(e) {                             // клик по поляне = клик сразу по всем грибам
@@ -2117,20 +2115,20 @@
       };
       im.src = "assets/meadow.webp";
     })();
-    function inMeadow(cx, cy) {
+    function inMeadow(cx, cy) {                                  // внутри круга поляны: овал (с запасом по краю) ИЛИ любая видимая точка картинки
       const r = scene.getBoundingClientRect(), u = (cx - r.left) / r.width, v = (cy - r.top) / r.height;
-      if (u < 0 || u > 1 || v < 0 || v > 1) return false;
-      if (!meadowMask) return ((u - .5) * 2) ** 2 + ((v - .5) * 2) ** 2 <= 1;
+      if (u < -0.03 || u > 1.03 || v < -0.03 || v > 1.03) return false;
+      const dx = (u - 0.505) / 0.495, dy = (v - 0.5) / 0.5;
+      if (dx * dx + dy * dy <= 1.1) return true;
+      if (!meadowMask || u < 0 || u > 1 || v < 0 || v > 1) return false;
       const x = Math.min(meadowMask.W - 1, Math.floor(u * meadowMask.W)), y = Math.min(meadowMask.H - 1, Math.floor(v * meadowMask.H));
-      return meadowMask.a[(y * meadowMask.W + x) * 4 + 3] > 40;
+      return meadowMask.a[(y * meadowMask.W + x) * 4 + 3] > 8;
     }
     stage.addEventListener("pointerdown", (e) => {
       downAt.set(e.pointerId, e.timeStamp);
-      if (!e.target.closest(".slot") && !inMeadow(e.clientX, e.clientY)) { scenePointer = null; return; }   // вне поляны не кликается
-      if (state) {                                                  // клик засчитываем сразу при касании, без ожидания отпускания
-        const sl = e.target.closest(".slot");
-        if (sl || inMeadow(e)) doClick(e);                       // по ячейкам (и закрытым тоже) и по всему овалу
-      }
+      const sl = e.target.closest(".slot");
+      if (!sl && !inMeadow(e.clientX, e.clientY)) { scenePointer = null; return; }   // вне поляны не кликается
+      if (state) doClick(e);                                        // клик засчитываем сразу при касании: по любой ячейке (и закрытой) и по всему кругу
       if (!e.isPrimary) return;
       held = false;
       clearTimeout(holdTimer);
