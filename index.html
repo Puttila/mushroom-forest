@@ -758,6 +758,12 @@
     // Формат: [файл, число кадров, длительность цикла в мс]. Чтобы оживить другой гриб, добавь его сюда.
     const ANIM = {
       golden_fly_agaric: { idle: ["assets/golden_fly_agaric_idle.png", 6, 1100], click: ["assets/golden_fly_agaric_click.png", 8, 480] },
+      emerald_chanterelle: { idle: ["assets/emerald_chanterelle_idle.png", 6, 1100], click: ["assets/emerald_chanterelle_click.png", 8, 480] },
+      inkling_panther:     { idle: ["assets/inkling_panther_idle.png", 6, 1100],     click: ["assets/inkling_panther_click.png", 6, 360] },
+      astral_fly_agaric:   { idle: ["assets/astral_fly_agaric_idle.png", 6, 1100],   click: ["assets/astral_fly_agaric_click.png", 8, 480] },
+      rt_22:               { idle: ["assets/rt_22_idle.png", 6, 1100],               click: ["assets/rt_22_click.png", 8, 480] },
+      blood_fly_agaric:    { idle: ["assets/blood_fly_agaric_idle.png", 6, 1100],    click: ["assets/blood_fly_agaric_click.png", 9, 540] },
+      glitch_fly_agaric:   { idle: ["assets/glitch_fly_agaric_idle.png", 6, 1100],   click: ["assets/glitch_fly_agaric_click.png", 6, 360] },
     };
     function playAnim(ico, name) {
       const a = ANIM[ico.dataset.mid]; if (!a || !ico.animate) return;
