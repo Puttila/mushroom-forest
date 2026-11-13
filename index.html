@@ -214,7 +214,7 @@
     .ico img { width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; pointer-events: none; }
     .cur { height: 1.05em; width: auto; vertical-align: -.17em; image-rendering: auto; pointer-events: none; }
     #spores .cur { height: .95em; vertical-align: -.12em; }
-    .ico.anim { background-repeat: no-repeat; background-position: 0 0; }
+    .ico.anim .fr { position: absolute; inset: 0; background-repeat: no-repeat; background-position: 0 0; pointer-events: none; }
     .slot .ico.anim { inset: -26% -26% -6% -26%; }   /* в кадрах анимации по краям свечение, поэтому кадр крупнее ячейки */
     .glossy { filter: drop-shadow(0 0 5px #ffe27a) brightness(1.15); }
 
@@ -754,27 +754,50 @@
     }).observe(document.body, { childList: true, subtree: true, characterData: true });
     function setText(el, t) { if (el._t !== t) { el._t = t; el.textContent = t; } }
 
-    // Анимированные грибы: полоса кадров (assets/<id>_idle.png стоит, assets/<id>_click.png при клике).
-    // Формат: [файл, число кадров, длительность цикла в мс]. Чтобы оживить другой гриб, добавь его сюда.
-    const ANIM = {
-      golden_fly_agaric: { idle: ["assets/golden_fly_agaric_idle.png", 6, 1100], click: ["assets/golden_fly_agaric_click.png", 8, 480] },
-      emerald_chanterelle: { idle: ["assets/emerald_chanterelle_idle.png", 6, 1100], click: ["assets/emerald_chanterelle_click.png", 8, 480] },
-      inkling_panther:     { idle: ["assets/inkling_panther_idle.png", 6, 1100],     click: ["assets/inkling_panther_click.png", 6, 360] },
-      astral_fly_agaric:   { idle: ["assets/astral_fly_agaric_idle.png", 6, 1100],   click: ["assets/astral_fly_agaric_click.png", 8, 480] },
-      rt_22:               { idle: ["assets/rt_22_idle.png", 6, 1100],               click: ["assets/rt_22_click.png", 8, 480] },
-      blood_fly_agaric:    { idle: ["assets/blood_fly_agaric_idle.png", 6, 1100],    click: ["assets/blood_fly_agaric_click.png", 9, 540] },
-      glitch_fly_agaric:   { idle: ["assets/glitch_fly_agaric_idle.png", 6, 1100],   click: ["assets/glitch_fly_agaric_click.png", 6, 360] },
-    };
+    // Анимированные грибы: полосы кадров assets/<id>_idle.png (стоит) и assets/<id>_click.png (при клике).
+    // Число кадров считается само: кадры квадратные, значит кадров = ширина / высота. Скорость одна для всех:
+    // в покое кадр меняется раз в IDLE_FRAME мс, клик играет ровно CLICK_MS мс независимо от числа кадров.
+    // Чтобы оживить другой гриб, просто добавь его id в список (и положи две полосы в assets).
+    const ANIM_IDS = ["golden_fly_agaric", "emerald_chanterelle", "inkling_panther", "astral_fly_agaric", "rt_22", "blood_fly_agaric", "glitch_fly_agaric"];
+    const IDLE_FRAME = 180, CLICK_MS = 520;
+    const ANIM = {};                                   // id -> {idle:[src,n], click:[src,n]}; появляется, когда обе полосы загружены и расшифрованы
+    function loadStrip(src) {
+      return new Promise((ok, fail) => {
+        const im = new Image();
+        im.onload = () => {
+          const done = () => ok([src, Math.max(1, Math.round(im.naturalWidth / im.naturalHeight)), im]);
+          (im.decode ? im.decode().then(done, done) : done());
+        };
+        im.onerror = fail;
+        im.src = src;
+      });
+    }
+    const animKeep = [];                               // держим картинки, чтобы браузер не выкинул их из памяти
+    const animLoading = Promise.all(ANIM_IDS.map((id) =>
+      Promise.all([loadStrip(`assets/${id}_idle.png`), loadStrip(`assets/${id}_click.png`)])
+        .then(([i, c]) => { ANIM[id] = { idle: [i[0], i[1]], click: [c[0], c[1]] }; animKeep.push(i[2], c[2]); })
+        .catch(() => {})));                            // нет файлов: гриб остаётся статичной картинкой
+
     function playAnim(ico, name) {
       const a = ANIM[ico.dataset.mid]; if (!a || !ico.animate) return;
-      const [src, n, ms] = a[name];
+      const [, n] = a[name];
+      const layer = ico[name === "click" ? "_lc" : "_li"], other = ico[name === "click" ? "_li" : "_lc"];
       ico.dataset.cur = name;
-      ico.style.backgroundImage = `url(${src})`;
-      ico.style.backgroundSize = n * 100 + "% 100%";
+      layer.style.visibility = "visible"; other.style.visibility = "hidden";   // обе полосы уже стоят в DOM, поэтому ничего не мигает
+      const dur = name === "click" ? CLICK_MS : n * IDLE_FRAME;
       if (ico._an) ico._an.cancel();
-      ico._an = ico.animate([{ backgroundPosition: "0% 0%" }, { backgroundPosition: "100% 0%" }],
-        { duration: ms, iterations: name === "idle" ? Infinity : 1, easing: `steps(${n}, jump-none)` });
+      ico._an = layer.animate([{ backgroundPosition: "0% 0%" }, { backgroundPosition: "100% 0%" }],
+        { duration: dur, iterations: name === "idle" ? Infinity : 1, easing: `steps(${n}, jump-none)`,
+          delay: name === "idle" && !ico._started ? -Math.random() * dur : 0 });   // разные грибы не качаются хором
+      ico._started = true;
       if (name === "click") ico._an.onfinish = () => playAnim(ico, "idle");
+    }
+    function animLayer(src, n) {
+      const d = document.createElement("div");
+      d.className = "fr";
+      d.style.backgroundImage = `url(${src})`;
+      d.style.backgroundSize = n * 100 + "% 100%";
+      return d;
     }
 
     // иконка гриба: твоя текстура, а если файла нет, то эмодзи (и больше этот файл не запрашиваем)
@@ -785,6 +808,10 @@
       if (live && ANIM[m.id] && wrap.animate) {              // гриб на поляне: живая анимация
         wrap.className = "ico anim" + (m.glossy ? " glossy" : "");
         wrap.dataset.mid = m.id;
+        const a = ANIM[m.id];
+        wrap._li = animLayer(a.idle[0], a.idle[1]); wrap._lc = animLayer(a.click[0], a.click[1]);
+        wrap._lc.style.visibility = "hidden";
+        wrap.append(wrap._li, wrap._lc);
         playAnim(wrap, "idle");
         return wrap;
       }
@@ -809,7 +836,7 @@
       const opt = { headers: { "X-Init-Data": tg.initData } };
       if (body !== undefined) {
         opt.method = "POST";
-        opt.headers["Content-Type"] = "application/json";
+        opt.headers["Content-Type"] = "application/json"; 
         opt.body = JSON.stringify(body);
       }
       const r = await fetch(API + path, opt);
@@ -2262,6 +2289,8 @@
       if (!document.hidden && !busy && (pending > 0 || idleTicks >= 10 || wildDue || wildWait)) { idleTicks = 0; sync(); }
     }, 1000);
 
+    // когда полосы анимаций загрузились, пересобираем поляну, чтобы грибы ожили без перезагрузки
+    animLoading.then(() => { if (state && !inventoryGesture) refreshSlots(); });
     curify(document.body);
     layout();
     sync();
